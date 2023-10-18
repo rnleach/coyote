@@ -12,7 +12,7 @@ LDFLAGS = /NOLOGO
 
 !IF "$(DEBUG)" == "1"
 
-CFLAGS = $(CFLAGS) /Od /Zi 
+CFLAGS = $(CFLAGS) /Od /Zi /RTCcsu
 LDFLAGS = $(LDFLAGS) /DEBUG
 
 !ELSE
@@ -21,21 +21,16 @@ CFLAGS = $(CFLAGS) /O2 /DNDEBUG /openmp:experimental /Qvec-report:1
 
 !ENDIF
 
-TEST_OBJS = tests/test.obj
-
-LIB_OBJ = src/coyote.obj
+TEST_OBJS = tests\test.obj   \
+		tests\time.obj
 
 all: test.exe test
 
-$(LIB_OBJ): src/coyote.h
-{src}.c{src}.obj:
-	@$(CC) $(CFLAGS) /c /Fo$*.obj $*.c 
-
-$(TEST_OBJS): tests/test.h src/coyote.h
+$(TEST_OBJS): tests\test.h src\coyote.h src\coyote_win32.h
 {tests}.c{tests}.obj:
 	@$(CC) $(CFLAGS) /c /Fo$*.obj $*.c 
 
-test.exe: $(TEST_OBJS) $(LIB_OBJ) 
+test.exe: $(TEST_OBJS)
 	@LINK $(LDFLAGS) $**
 
 test: test.exe
@@ -44,5 +39,5 @@ test: test.exe
 
 clean:
 	@echo -------------------------------------------------------------------------------------------
-	@del tests\*.obj src\*.obj *.pdb *.exe *.ilk
+	@del tests\*.obj *.pdb *.exe *.ilk tmp_output\*.txt
 

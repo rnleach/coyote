@@ -107,7 +107,7 @@ test: directories makefile $(TEST_OBJS) $(OBJS)
 	$(HIDE) $(TEST_TARGET)
 
 clean:
-	-$(HIDE)rm -rf $(DEBUGDIR) $(RELEASEDIR) 2>/dev/null
+	-$(HIDE)rm -rf $(DEBUGDIR) $(RELEASEDIR) tmp_output/*.txt 2>/dev/null
 	@echo
 	@echo Cleaning done!
 

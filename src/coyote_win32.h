@@ -19,7 +19,7 @@ coy_current_time(void)
 
     union WinTimePun now = {0};
     bool success = SystemTimeToFileTime(&now_st, &now.ft);
-    PanicIf(!success);
+    StopIf(!success, goto ERR_RETURN);
 
     SYSTEMTIME epoch_st = { 
         .wYear=1970, 
@@ -37,6 +37,9 @@ coy_current_time(void)
     PanicIf(!success);
 
     return (now.as_uint64.QuadPart - epoch.as_uint64.QuadPart) / 10000000;
+
+ERR_RETURN:
+    return UINT64_MAX;
 }
 
 static inline CoyFile
