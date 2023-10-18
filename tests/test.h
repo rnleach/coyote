@@ -16,7 +16,7 @@ void coyote_time_tests(void);
 
 #if defined(_WIN32) || defined(_WIN64)
 static char const *test_data_dir = "tmp_output";
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__APPLE__)
 static char const *test_data_dir = "../tmp_output";
 #else
   #error "Platform not supported by Coyote Library"

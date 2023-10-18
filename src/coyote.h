@@ -115,9 +115,11 @@ static inline void coy_free_memory(CoyMemoryBlock *mem);
  *
  *-------------------------------------------------------------------------------------------------------------------------*/
 #if defined(_WIN32) || defined(_WIN64)
-#include "coyote_win32.h"
+  #include "coyote_win32.h"
 #elif defined(__linux__)
-#include "coyote_linux.h"
+  #include "coyote_linux.h"
+#elif defined(__APPLE__)
+  #include "coyote_apple_osx.h"
 #else
   #error "Platform not supported by Coyote Library"
 #endif
