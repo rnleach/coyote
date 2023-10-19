@@ -17,12 +17,13 @@ LDFLAGS = $(LDFLAGS) /DEBUG
 
 !ELSE
 
-CFLAGS = $(CFLAGS) /O2 /DNDEBUG /openmp:experimental /Qvec-report:1
+CFLAGS = $(CFLAGS) /O2 /DNDEBUG /arch:AVX2 /openmp:experimental /Qvec-report:1
 
 !ENDIF
 
-TEST_OBJS = tests\test.obj   \
-		tests\time.obj
+TEST_OBJS = tests\test.obj     \
+            tests\time.obj     \
+            tests\fileio.obj 
 
 all: test.exe test
 

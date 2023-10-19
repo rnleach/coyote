@@ -12,7 +12,7 @@ union WinTimePun
 };
 
 static inline uint64_t
-coy_current_time(void)
+coy_time_now(void)
 {
     SYSTEMTIME now_st = {0};
     GetSystemTime(&now_st);
@@ -43,85 +43,237 @@ ERR_RETURN:
 }
 
 static inline CoyFile
-coy_create_file(char const *filename)
+coy_file_create(char const *filename)
 {
-    CoyFile result = {0};
-    // TODO implement
-    Assert(false);
-    return result;
+    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
+                            GENERIC_WRITE,         // [in]           DWORD                 dwDesiredAccess,
+                            0,                     // [in]           DWORD                 dwShareMode,
+                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            CREATE_ALWAYS,         // [in]           DWORD                 dwCreationDisposition,
+                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
+                            NULL);                 // [in, optional] HANDLE                hTemplateFile
+
+    if(fh != INVALID_HANDLE_VALUE)
+    {
+        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+    }
+    else
+    {
+        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+    }
 }
 
 static inline 
-CoyFile coy_append_to_file(char const *filename)
+CoyFile coy_file_append(char const *filename)
 {
-    CoyFile result = {0};
-    // TODO implement
-    Assert(false);
-    return result;
+    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
+                            FILE_APPEND_DATA,      // [in]           DWORD                 dwDesiredAccess,
+                            0,                     // [in]           DWORD                 dwShareMode,
+                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            OPEN_ALWAYS,           // [in]           DWORD                 dwCreationDisposition,
+                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
+                            NULL);                 // [in, optional] HANDLE                hTemplateFile
+
+    if(fh != INVALID_HANDLE_VALUE)
+    {
+        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+    }
+    else
+    {
+        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+    }
 }
 
 static inline intptr_t 
-coy_write_to_file(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer)
+coy_file_write(CoyFile *file, intptr_t nbytes_write, unsigned char *buffer)
 {
-    // TODO implement
-    Assert(false);
-    return 0;
+    StopIf(!file->valid, goto ERR_RETURN);
+
+    DWORD nbytes_written = 0;
+    BOOL success = WriteFile(
+        (HANDLE)file->handle,     // [in]                HANDLE       hFile,
+        buffer,                   // [in]                LPCVOID      lpBuffer,
+        nbytes_write,             // [in]                DWORD        nNumberOfBytesToWrite,
+        &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
+        NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
+    );
+
+    StopIf(!success, goto ERR_RETURN);
+    return (intptr_t)nbytes_written;
+    
+ERR_RETURN:
+    return -1;
 }
 
 static inline CoyFile 
-coy_open_file_read(char const *filename)
+coy_file_open_read(char const *filename)
 {
-    CoyFile result = {0};
-    // TODO implement
-    Assert(false);
-    return result;
+    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
+                            GENERIC_READ,          // [in]           DWORD                 dwDesiredAccess,
+                            FILE_SHARE_READ,       // [in]           DWORD                 dwShareMode,
+                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            OPEN_EXISTING,         // [in]           DWORD                 dwCreationDisposition,
+                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
+                            NULL);                 // [in, optional] HANDLE                hTemplateFile
+
+    if(fh != INVALID_HANDLE_VALUE)
+    {
+        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+    }
+    else
+    {
+        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+    }
 }
 
 static inline intptr_t 
-coy_read_from_file(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
+coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
 {
-    // TODO implement
-    Assert(false);
-    return 0;
+    StopIf(!file->valid, goto ERR_RETURN);
+
+    DWORD nbytes_read = 0;
+    BOOL success =  ReadFile((HANDLE) file->handle, //  [in]                HANDLE       hFile,
+                             buffer,                //  [out]               LPVOID       lpBuffer,
+                             buf_size,              //  [in]                DWORD        nNumberOfBytesToRead,
+                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
+
+    StopIf(!success, goto ERR_RETURN);
+    return (intptr_t)nbytes_read;
+    
+ERR_RETURN:
+    return -1;
+}
+
+static inline void 
+coy_file_close(CoyFile *file)
+{
+    CloseHandle((HANDLE)file->handle);
+    file->valid = false;
+
+    return;
 }
 
 static inline intptr_t 
 coy_file_size(char const *filename)
 {
-    // TODO implement
-    Assert(false);
-    return 0;
+    WIN32_FILE_ATTRIBUTE_DATA attr = {0};
+    BOOL success = GetFileAttributesExA(filename, GetFileExInfoStandard, &attr);
+    StopIf(!success, goto ERR_RETURN);
+
+    _Static_assert(sizeof(intptr_t) == sizeof(DWORD));
+    StopIf(attr.nFileSizeLow > INTPTR_MAX, goto ERR_RETURN);
+
+    return (intptr_t) attr.nFileSizeLow;
+
+ERR_RETURN:
+    return -1;
 }
 
 static inline CoyMemMappedFile 
 coy_memmap_read_only(char const *filename)
 {
-    CoyMemMappedFile result = {0};
-    // TODO implement
-    Assert(false);
-    return result;
+    CoyFile cf = coy_file_open_read(filename);
+    StopIf(!cf.valid, goto ERR_RETURN);
+
+    HANDLE fmh =  CreateFileMappingA((HANDLE)cf.handle, // [in]           HANDLE                hFile,
+                                     NULL,              // [in, optional] LPSECURITY_ATTRIBUTES lpFileMappingAttributes,
+                                     PAGE_READONLY,     // [in]           DWORD                 flProtect,
+                                     0,                 // [in]           DWORD                 dwMaximumSizeHigh,
+                                     0,                 // [in]           DWORD                 dwMaximumSizeLow,
+                                     NULL);             // [in, optional] LPCSTR                lpName
+    StopIf(fmh == INVALID_HANDLE_VALUE, goto CLOSE_CF_AND_ERR);
+
+    LPVOID ptr =  MapViewOfFile(fmh,           // [in] HANDLE hFileMappingObject,
+                                FILE_MAP_READ, // [in] DWORD  dwDesiredAccess,
+                                0,             // [in] DWORD  dwFileOffsetHigh,
+                                0,             // [in] DWORD  dwFileOffsetLow,
+                                0);            // [in] SIZE_T dwNumberOfBytesToMap
+    StopIf(!ptr, goto CLOSE_FMH_AND_ERR);
+
+    // Get the size of the file mapped.
+    DWORD size_in_bytes = GetFileSize((HANDLE)cf.handle, NULL);
+    StopIf(size_in_bytes == INVALID_FILE_SIZE, goto CLOSE_FMH_AND_ERR);
+
+    return (CoyMemMappedFile){
+	  .size_in_bytes = (intptr_t)size_in_bytes, 
+		.data = ptr, 
+		._internal = { cf.handle, (intptr_t)fmh }, 
+		.valid = true 
+    };
+
+CLOSE_FMH_AND_ERR:
+    CloseHandle(fmh);
+CLOSE_CF_AND_ERR:
+    coy_file_close(&cf);
+ERR_RETURN:
+    return (CoyMemMappedFile) { .valid = false };
 }
 
 static inline void 
 coy_memmap_close(CoyMemMappedFile *file)
 {
-    // TODO implement
-    Assert(false);
+    void const*data = file->data;
+    intptr_t fh = file->_internal[0];
+    HANDLE fmh = (HANDLE)file->_internal[1];
+
+    /*BOOL success = */UnmapViewOfFile(data);
+    CloseHandle(fmh);
+    CoyFile cf = { .handle = fh, .valid = true };
+    coy_file_close(&cf);
+
+    file->valid = false;
+
     return;
 }
 
 static char const coy_path_sep = '\\';
 
 static inline bool 
-coy_append_to_path(ptrdiff_t buf_len, char path_buffer[], char const *new_path)
+coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
 {
-    // TODO implement
-    Assert(false);
+    // Find first '\0'
+    intptr_t position = 0;
+    char *c = path_buffer;
+    while(position < buf_len && *c)
+    {
+        ++c;
+        position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
+    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
+    {
+        path_buffer[position] = coy_path_sep;
+        position += 1;
+        StopIf(position >= buf_len, goto ERR_RETURN);
+    }
+
+    // Copy in the new path part.
+    char const *new_c = new_path;
+    while(position < buf_len && *new_c)
+    {
+        path_buffer[position] = *new_c;
+        ++new_c;
+        position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Null terminate the path.
+    path_buffer[position] = '\0';
+    
+    return true;
+
+ERR_RETURN:
+    path_buffer[buf_len - 1] = '\0';
     return false;
 }
 
 static inline CoyMemoryBlock 
-coy_allocate_memory(int64_t minimum_num_bytes)
+coy_memory_allocate(int64_t minimum_num_bytes)
 {
     CoyMemoryBlock result = {0};
     // TODO implement
@@ -130,7 +282,7 @@ coy_allocate_memory(int64_t minimum_num_bytes)
 }
 
 static inline void
-coy_free_memory(CoyMemoryBlock *mem)
+coy_memory_free(CoyMemoryBlock *mem)
 {
     // TODO implement
     Assert(false);

@@ -1,7 +1,6 @@
 #ifndef _COYOTE_H_
 #define _COYOTE_H_
 
-#include <stddef.h>
 #include <stdint.h>
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -54,7 +53,7 @@ int memcmp(const void *s1, const void *s2, size_t num_bytes);
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                      Date and Time
  *-------------------------------------------------------------------------------------------------------------------------*/
-static inline uint64_t coy_current_time(void); // Get the current system time in seconds since midnight, Jan. 1 1970.
+static inline uint64_t coy_time_now(void); // Get the current system time in seconds since midnight, Jan. 1 1970.
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                     Files & Paths
@@ -67,18 +66,20 @@ typedef struct
     bool valid;      // error indicator
 } CoyFile;
 
-static inline CoyFile coy_create_file(char const *filename);
-static inline CoyFile coy_append_to_file(char const *filename);
-static inline intptr_t coy_write_to_file(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer); // return nbytes written
+static inline CoyFile coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
+static inline CoyFile coy_file_append(char const *filename); // Create file if it doesn't exist yet, otherwise append.
+static inline intptr_t coy_file_write(CoyFile *file, intptr_t nbytes_write, unsigned char *buffer); // return nbytes written or -1 on error
 
-static inline CoyFile coy_open_file_read(char const *filename);
-static inline intptr_t coy_read_from_file(CoyFile *file, intptr_t buf_size, unsigned char *buffer); // return nbytes read
-static inline intptr_t coy_file_size(char const *filename); // size of a file in bytes
+static inline CoyFile coy_file_open_read(char const *filename);
+static inline intptr_t coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer); // return nbytes read or -1 on error
+static inline void coy_file_close(CoyFile *file); // Must set valid member to false on success or failure!
+
+static inline intptr_t coy_file_size(char const *filename); // size of a file in bytes, -1 on error.
 
 typedef struct
 {
     intptr_t size_in_bytes; // size of the file
-    unsigned char *data; 
+    unsigned char const *data; 
     intptr_t _internal[2];  // implementation specific data
     bool valid;             // error indicator
 } CoyMemMappedFile;
@@ -86,8 +87,8 @@ typedef struct
 static inline CoyMemMappedFile coy_memmap_read_only(char const *filename);
 static inline void coy_memmap_close(CoyMemMappedFile *file);
 
-// Append new path to the path in path_buffer, return true on success or false on error.
-static inline bool coy_append_to_path(ptrdiff_t buf_len, char path_buffer[], char const *new_path);
+// Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
+static inline bool coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                         Memory
@@ -102,8 +103,12 @@ typedef struct
     bool valid;
 } CoyMemoryBlock;
 
-static inline CoyMemoryBlock coy_allocate_memory(int64_t minimum_num_bytes);
-static inline void coy_free_memory(CoyMemoryBlock *mem);
+#define COY_KB(a) (INTPTR_C(a) * INTPTR_C(1024))
+#define COY_MB(a) (COY_KB(a) * INTPTR_C(1024))
+#define COY_GB(a) (COY_MB(a) * INTPTR_C(1024))
+
+static inline CoyMemoryBlock coy_memory_allocate(int64_t minimum_num_bytes);
+static inline void coy_memory_free(CoyMemoryBlock *mem);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *

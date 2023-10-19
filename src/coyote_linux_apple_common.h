@@ -7,7 +7,7 @@
 #include <sys/time.h>
 
 static inline uint64_t
-coy_current_time(void)
+coy_time_now(void)
 {
     struct timeval tv = {0};
     int errcode = gettimeofday(&tv, NULL);
@@ -22,7 +22,7 @@ ERR_RETURN:
 }
 
 static inline CoyFile
-coy_create_file(char const *filename)
+coy_file_create(char const *filename)
 {
     CoyFile result = {0};
     // TODO implement
@@ -31,7 +31,7 @@ coy_create_file(char const *filename)
 }
 
 static inline 
-CoyFile coy_append_to_file(char const *filename)
+CoyFile coy_file_append(char const *filename)
 {
     CoyFile result = {0};
     // TODO implement
@@ -40,7 +40,7 @@ CoyFile coy_append_to_file(char const *filename)
 }
 
 static inline intptr_t 
-coy_write_to_file(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer)
+coy_file_write(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer)
 {
     // TODO implement
     Assert(false);
@@ -48,7 +48,7 @@ coy_write_to_file(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer
 }
 
 static inline CoyFile 
-coy_open_file_read(char const *filename)
+coy_file_open_read(char const *filename)
 {
     CoyFile result = {0};
     // TODO implement
@@ -57,11 +57,19 @@ coy_open_file_read(char const *filename)
 }
 
 static inline intptr_t 
-coy_read_from_file(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
+coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
 {
     // TODO implement
     Assert(false);
     return 0;
+}
+
+static inline void 
+coy_file_close(CoyFile *file)
+{
+    // TODO implement
+    Assert(false);
+    return;
 }
 
 static inline intptr_t 
@@ -92,15 +100,50 @@ coy_memmap_close(CoyMemMappedFile *file)
 static char const coy_path_sep = '/';
 
 static inline bool 
-coy_append_to_path(ptrdiff_t buf_len, char path_buffer[], char const *new_path)
+coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
 {
-    // TODO implement
-    Assert(false);
+    // Find first '\0'
+    intptr_t position = 0;
+    char *c = path_buffer;
+    while(position < buf_len && *c)
+    {
+	  ++c;
+	  position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
+    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
+    {
+	  path_buffer[position] = coy_path_sep;
+	  position += 1;
+	  StopIf(position >= buf_len, goto ERR_RETURN);
+    }
+
+    // Copy in the new path part.
+    char const *new_c = new_path;
+    while(position < buf_len && *new_c)
+    {
+	  path_buffer[position] = *new_c;
+	  ++new_c;
+	  position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Null terminate the path.
+    path_buffer[position] = '\0';
+    
+    return true;
+
+ERR_RETURN:
+    path_buffer[buf_len - 1] = '\0';
     return false;
 }
 
 static inline CoyMemoryBlock 
-coy_allocate_memory(int64_t minimum_num_bytes)
+coy_memory_allocate(int64_t minimum_num_bytes)
 {
     CoyMemoryBlock result = {0};
     // TODO implement
@@ -109,7 +152,7 @@ coy_allocate_memory(int64_t minimum_num_bytes)
 }
 
 static inline void
-coy_free_memory(CoyMemoryBlock *mem)
+coy_memory_free(CoyMemoryBlock *mem)
 {
     // TODO implement
     Assert(false);

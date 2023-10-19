@@ -29,4 +29,7 @@ Goals & Non-goals:
 
 ### Version 1.0.0 - IN PROGRESS
   - (YYYY-MM-DD) Initial release.
+  - Get the current system time.
+  - Basic file IO.
+  - Read only memory mapped files.
 
