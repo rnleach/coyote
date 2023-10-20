@@ -143,7 +143,7 @@ ERR_RETURN:
 }
 
 static inline CoyMemoryBlock 
-coy_memory_allocate(int64_t minimum_num_bytes)
+coy_memory_allocate(intptr_t minimum_num_bytes)
 {
     CoyMemoryBlock result = {0};
     // TODO implement

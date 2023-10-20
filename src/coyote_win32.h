@@ -5,6 +5,8 @@
  *-------------------------------------------------------------------------------------------------------------------------*/
 #include <windows.h>
 
+_Static_assert(UINT32_MAX < INTPTR_MAX, "DWORD cannot be cast to intptr_t safely.");
+
 union WinTimePun
 {
     FILETIME ft;
@@ -161,10 +163,11 @@ coy_file_size(char const *filename)
     BOOL success = GetFileAttributesExA(filename, GetFileExInfoStandard, &attr);
     StopIf(!success, goto ERR_RETURN);
 
-    _Static_assert(sizeof(intptr_t) == sizeof(DWORD));
-    StopIf(attr.nFileSizeLow > INTPTR_MAX, goto ERR_RETURN);
+    _Static_assert(sizeof(uintptr_t) == 2 * sizeof(DWORD) && sizeof(DWORD) == 4);
+    uintptr_t file_size = ((uintptr_t)attr.nFileSizeHigh << 32) | attr.nFileSizeLow;
+    StopIf(file_size > INTPTR_MAX, goto ERR_RETURN);
 
-    return (intptr_t) attr.nFileSizeLow;
+    return (intptr_t) file_size;
 
 ERR_RETURN:
     return -1;
@@ -192,11 +195,16 @@ coy_memmap_read_only(char const *filename)
     StopIf(!ptr, goto CLOSE_FMH_AND_ERR);
 
     // Get the size of the file mapped.
-    DWORD size_in_bytes = GetFileSize((HANDLE)cf.handle, NULL);
-    StopIf(size_in_bytes == INVALID_FILE_SIZE, goto CLOSE_FMH_AND_ERR);
+    DWORD file_size_high = 0;
+    DWORD file_size_low = GetFileSize((HANDLE)cf.handle, &file_size_high);
+    StopIf(file_size_low == INVALID_FILE_SIZE, goto CLOSE_FMH_AND_ERR);
+
+    uintptr_t file_size = ((uintptr_t)file_size_high << 32) | file_size_low;
+    StopIf(file_size > INTPTR_MAX, goto CLOSE_FMH_AND_ERR);
+
 
     return (CoyMemMappedFile){
-	  .size_in_bytes = (intptr_t)size_in_bytes, 
+	  .size_in_bytes = (intptr_t)file_size, 
 		.data = ptr, 
 		._internal = { cf.handle, (intptr_t)fmh }, 
 		.valid = true 
@@ -273,19 +281,47 @@ ERR_RETURN:
 }
 
 static inline CoyMemoryBlock 
-coy_memory_allocate(int64_t minimum_num_bytes)
+coy_memory_allocate(intptr_t minimum_num_bytes)
 {
-    CoyMemoryBlock result = {0};
-    // TODO implement
-    Assert(false);
-    return result;
+    if(minimum_num_bytes <= 0)
+    {
+	  return (CoyMemoryBlock){.mem = 0, .size = minimum_num_bytes, .valid = false };
+    }
+
+    SYSTEM_INFO info = {0};
+    GetSystemInfo(&info);
+    DWORD page_size = info.dwPageSize;
+    DWORD alloc_gran = info.dwAllocationGranularity;
+
+    DWORD target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
+
+    DWORD allocation_size = minimum_num_bytes + target_granularity - (minimum_num_bytes % target_granularity);
+
+    if(allocation_size > INTPTR_MAX)
+    {
+	  return (CoyMemoryBlock){.mem = 0, .size = INTPTR_MAX, .valid = false };
+    }
+    int64_t size = (int64_t)allocation_size;
+
+    void *mem = VirtualAlloc(NULL, allocation_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    if(!mem)
+    {
+	  return (CoyMemoryBlock){.mem = 0, .size = 0, .valid = false };
+    }
+
+    return (CoyMemoryBlock){.mem = mem, .size = size, .valid = true };
 }
 
 static inline void
 coy_memory_free(CoyMemoryBlock *mem)
 {
-    // TODO implement
-    Assert(false);
+    Assert(mem);
+    if(mem->valid)
+    {
+	  /*BOOL success =*/ VirtualFree(mem->mem, 0, MEM_RELEASE);
+	  mem->valid = false;
+    }
+
     return;
 }
 

@@ -103,11 +103,17 @@ typedef struct
     bool valid;
 } CoyMemoryBlock;
 
-#define COY_KB(a) (INTPTR_C(a) * INTPTR_C(1024))
-#define COY_MB(a) (COY_KB(a) * INTPTR_C(1024))
-#define COY_GB(a) (COY_MB(a) * INTPTR_C(1024))
+#define COY_KB(a) ((a) * (1000))
+#define COY_MB(a) (COY_KB(a) * (1000))
+#define COY_GB(a) (COY_MB(a) * (1000))
+#define COY_TB(a) (COY_GB(a) * (1000))
 
-static inline CoyMemoryBlock coy_memory_allocate(int64_t minimum_num_bytes);
+#define COY_KiB(a) ((a) * (1024))
+#define COY_MiB(a) (COY_KiB(a) * (1024))
+#define COY_GiB(a) (COY_MiB(a) * (1024))
+#define COY_TiB(a) (COY_GiB(a) * (1024))
+
+static inline CoyMemoryBlock coy_memory_allocate(intptr_t minimum_num_bytes);
 static inline void coy_memory_free(CoyMemoryBlock *mem);
 
 /*---------------------------------------------------------------------------------------------------------------------------
