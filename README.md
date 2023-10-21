@@ -10,25 +10,21 @@ adaptable!
 Goals & Non-goals:
  1. I only implement the things I need. If it's in here, I needed it at some point.
 
- 2. Single header (maybe + single C) file. Keep it simple to use and included in a program.
+ 2. Single header library. Keep it simple to use and include in a program.
 
- 3. NOT threadsafe, though it may implement types and functions for abstracting over OS facilities for thread 
+ 3. NOT threadsafe, though it MAY implement types and functions for abstracting over OS facilities for thread 
     synchronization.
 
  4. NO global mutable state and reentrant functions. I'll do the best I can here, and if I fail I'll document it, but at
     some level I'm at the mercy of the OS's I support.
  
- 5. I plan to support Windows, Mac OSX (BSD unix), and Linux (Ubuntu). The last two may just be considered Posix, but I'm
-    not commited to Posix.
-
-## Design Notes
-
-    None yet.
+ 5. I plan to support Windows, Mac OSX (BSD unix), and Linux (Ubuntu). The last two may just be considered POSIX for now, 
+    but I'm not commited to Posix.
 
 ## Releases
 
-### Version 1.0.0 - IN PROGRESS
-  - (YYYY-MM-DD) Initial release.
+### Version 1.0.0
+  - (2023-10-21) Initial release.
   - Get the current system time.
   - Basic file IO.
   - Read only memory mapped files.
