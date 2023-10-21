@@ -204,10 +204,10 @@ coy_memmap_read_only(char const *filename)
 
 
     return (CoyMemMappedFile){
-	  .size_in_bytes = (intptr_t)file_size, 
-		.data = ptr, 
-		._internal = { cf.handle, (intptr_t)fmh }, 
-		.valid = true 
+      .size_in_bytes = (intptr_t)file_size, 
+        .data = ptr, 
+        ._internal = { cf.handle, (intptr_t)fmh }, 
+        .valid = true 
     };
 
 CLOSE_FMH_AND_ERR:
@@ -285,7 +285,7 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
 {
     if(minimum_num_bytes <= 0)
     {
-	  return (CoyMemoryBlock){.mem = 0, .size = minimum_num_bytes, .valid = false };
+         return (CoyMemoryBlock){.mem = 0, .size = minimum_num_bytes, .valid = false };
     }
 
     SYSTEM_INFO info = {0};
@@ -299,14 +299,14 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
 
     if(allocation_size > INTPTR_MAX)
     {
-	  return (CoyMemoryBlock){.mem = 0, .size = INTPTR_MAX, .valid = false };
+         return (CoyMemoryBlock){.mem = 0, .size = INTPTR_MAX, .valid = false };
     }
     int64_t size = (int64_t)allocation_size;
 
     void *mem = VirtualAlloc(NULL, allocation_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if(!mem)
     {
-	  return (CoyMemoryBlock){.mem = 0, .size = 0, .valid = false };
+         return (CoyMemoryBlock){.mem = 0, .size = 0, .valid = false };
     }
 
     return (CoyMemoryBlock){.mem = mem, .size = size, .valid = true };
@@ -318,8 +318,8 @@ coy_memory_free(CoyMemoryBlock *mem)
     Assert(mem);
     if(mem->valid)
     {
-	  /*BOOL success =*/ VirtualFree(mem->mem, 0, MEM_RELEASE);
-	  mem->valid = false;
+         /*BOOL success =*/ VirtualFree(mem->mem, 0, MEM_RELEASE);
+         mem->valid = false;
     }
 
     return;
