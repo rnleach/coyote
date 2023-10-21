@@ -32,4 +32,5 @@ Goals & Non-goals:
   - Get the current system time.
   - Basic file IO.
   - Read only memory mapped files.
+  - Allocate & free large chunks of memory.
 
