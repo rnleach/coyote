@@ -44,6 +44,51 @@ ERR_RETURN:
     return UINT64_MAX;
 }
 
+static char const coy_path_sep = '\\';
+
+static inline bool 
+coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+{
+    // Find first '\0'
+    intptr_t position = 0;
+    char *c = path_buffer;
+    while(position < buf_len && *c)
+    {
+        ++c;
+        position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
+    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
+    {
+        path_buffer[position] = coy_path_sep;
+        position += 1;
+        StopIf(position >= buf_len, goto ERR_RETURN);
+    }
+
+    // Copy in the new path part.
+    char const *new_c = new_path;
+    while(position < buf_len && *new_c)
+    {
+        path_buffer[position] = *new_c;
+        ++new_c;
+        position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Null terminate the path.
+    path_buffer[position] = '\0';
+    
+    return true;
+
+ERR_RETURN:
+    path_buffer[buf_len - 1] = '\0';
+    return false;
+}
+
 static inline CoyFile
 coy_file_create(char const *filename)
 {
@@ -235,49 +280,93 @@ coy_memmap_close(CoyMemMappedFile *file)
     return;
 }
 
-static char const coy_path_sep = '\\';
+// I don't normally use static storage, but the linux interface uses it internally, so I'm stuck with those semantics.
+// I'll use my own here.
+static WIN32_FIND_DATA coy_file_name_iterator_data;
+static char coy_file_name[1024];
 
-static inline bool 
-coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+static inline CoyFileNameIter
+coy_file_name_iterator_open(char const *directory_path, char const *file_extension)
 {
-    // Find first '\0'
-    intptr_t position = 0;
-    char *c = path_buffer;
-    while(position < buf_len && *c)
+    char path_buf[1024] = {0};
+    int i = 0;
+    for(i = 0; i < sizeof(path_buf) && directory_path[i]; ++i)
     {
-        ++c;
-        position += 1;
+        path_buf[i] = directory_path[i];
     }
+    StopIf(i + 2 >= sizeof(path_buf), goto ERR_RETURN);
+    path_buf[i] = '\\';
+    path_buf[i + 1] = '*';
+    path_buf[i + 2] = '\0';
 
-    StopIf(position >= buf_len, goto ERR_RETURN);
-
-    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
-    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
-    {
-        path_buffer[position] = coy_path_sep;
-        position += 1;
-        StopIf(position >= buf_len, goto ERR_RETURN);
-    }
-
-    // Copy in the new path part.
-    char const *new_c = new_path;
-    while(position < buf_len && *new_c)
-    {
-        path_buffer[position] = *new_c;
-        ++new_c;
-        position += 1;
-    }
-
-    StopIf(position >= buf_len, goto ERR_RETURN);
-
-    // Null terminate the path.
-    path_buffer[position] = '\0';
-    
-    return true;
+    HANDLE finder = FindFirstFile(path_buf, &coy_file_name_iterator_data);
+    StopIf(finder == INVALID_HANDLE_VALUE, goto ERR_RETURN);
+    return (CoyFileNameIter) { .os_handle=(intptr_t)finder, .file_extension=file_extension, .valid=true };
 
 ERR_RETURN:
-    path_buffer[buf_len - 1] = '\0';
-    return false;
+    return (CoyFileNameIter) { .valid=false };
+}
+
+static inline char const *
+coy_file_name_iterator_next(CoyFileNameIter *cfni)
+{
+    if(cfni->valid)
+    {
+        // The first call to coy_file_name_iterator_open() should have populated
+        char const *fname = coy_file_name_iterator_data.cFileName;
+        bool found = false;
+        while(!found)
+        {
+            if(!(coy_file_name_iterator_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                if(cfni->file_extension == NULL)
+                {
+                    found = true;
+                }
+                else
+                {
+                    char const *ext = coy_file_extension(fname);
+                    if(coy_null_term_strings_equal(ext, cfni->file_extension))
+                    {
+                        found = true;
+                    }
+                }
+            }
+            if(found)
+            {
+                int i = 0;
+                for(i = 0; i < sizeof(coy_file_name) && fname[i]; ++i)
+                {
+                    coy_file_name[i] = fname[i];
+                }
+                coy_file_name[i] = '\0';
+            }
+
+            BOOL foundnext = FindNextFileA((HANDLE)cfni->os_handle, &coy_file_name_iterator_data);
+
+            if(!foundnext)
+            {
+                cfni->valid = false;
+                break;
+            }
+        }
+
+        if(found) 
+        {
+            return coy_file_name;
+        }
+    }
+
+    return NULL;
+}
+
+static inline void 
+coy_file_name_iterator_close(CoyFileNameIter *cfin)
+{
+    HANDLE finder = (HANDLE)cfin->os_handle;
+    FindClose(finder);
+    *cfin = (CoyFileNameIter) {0};
+    return;
 }
 
 static inline CoyMemoryBlock 

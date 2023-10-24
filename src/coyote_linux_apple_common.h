@@ -4,6 +4,7 @@
  *                                         Apple/MacOSX Linux Common Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
 
+#include <dirent.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -24,6 +25,51 @@ coy_time_now(void)
 
 ERR_RETURN:
     return UINT64_MAX;
+}
+
+static char const coy_path_sep = '/';
+
+static inline bool 
+coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+{
+    // Find first '\0'
+    intptr_t position = 0;
+    char *c = path_buffer;
+    while(position < buf_len && *c)
+    {
+      ++c;
+      position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
+    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
+    {
+      path_buffer[position] = coy_path_sep;
+      position += 1;
+      StopIf(position >= buf_len, goto ERR_RETURN);
+    }
+
+    // Copy in the new path part.
+    char const *new_c = new_path;
+    while(position < buf_len && *new_c)
+    {
+        path_buffer[position] = *new_c;
+        ++new_c;
+        position += 1;
+    }
+
+    StopIf(position >= buf_len, goto ERR_RETURN);
+
+    // Null terminate the path.
+    path_buffer[position] = '\0';
+    
+    return true;
+
+ERR_RETURN:
+    path_buffer[buf_len - 1] = '\0';
+    return false;
 }
 
 static inline CoyFile
@@ -167,49 +213,56 @@ coy_memmap_close(CoyMemMappedFile *file)
     return;
 }
 
-static char const coy_path_sep = '/';
-
-static inline bool 
-coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+static inline CoyFileNameIter 
+coy_file_name_iterator_open(char const *directory_path, char const *file_extension)
 {
-    // Find first '\0'
-    intptr_t position = 0;
-    char *c = path_buffer;
-    while(position < buf_len && *c)
-    {
-      ++c;
-      position += 1;
-    }
+    DIR *d = opendir(directory_path);
+    StopIf(!d, goto ERR_RETURN);
 
-    StopIf(position >= buf_len, goto ERR_RETURN);
-
-    // Add a path separator - unless the buffer is empty or the last path character was a path separator.
-    if(position > 0 && path_buffer[position - 1] != coy_path_sep)
-    {
-      path_buffer[position] = coy_path_sep;
-      position += 1;
-      StopIf(position >= buf_len, goto ERR_RETURN);
-    }
-
-    // Copy in the new path part.
-    char const *new_c = new_path;
-    while(position < buf_len && *new_c)
-    {
-        path_buffer[position] = *new_c;
-        ++new_c;
-        position += 1;
-    }
-
-    StopIf(position >= buf_len, goto ERR_RETURN);
-
-    // Null terminate the path.
-    path_buffer[position] = '\0';
-    
-    return true;
+    return (CoyFileNameIter){ .os_handle = (intptr_t)d, .file_extension=file_extension, .valid=true};
 
 ERR_RETURN:
-    path_buffer[buf_len - 1] = '\0';
-    return false;
+    return (CoyFileNameIter) {.valid=false};
+}
+
+static inline char const *
+coy_file_name_iterator_next(CoyFileNameIter *cfni)
+{
+    if(cfni->valid)
+    {
+        DIR *d = (DIR *)cfni->os_handle;
+        struct dirent *entry = readdir(d);
+        while(entry)
+        {
+            if(entry->d_type == DT_REG) {
+                if(cfni->file_extension == NULL) 
+                {
+                    return entry->d_name;
+                }
+                else 
+                {
+                    char const *ext = coy_file_extension(entry->d_name);
+                    if(coy_null_term_strings_equal(ext, cfni->file_extension))
+                    {
+                        return entry->d_name;
+                    }
+                }
+            }
+            entry = readdir(d);
+        }
+    }
+
+    cfni->valid = false;
+    return NULL;
+}
+
+static inline void 
+coy_file_name_iterator_close(CoyFileNameIter *cfin)
+{
+    DIR *d = (DIR *)cfin->os_handle;
+    /*int rc = */ closedir(d);
+    *cfin = (CoyFileNameIter){0};
+    return;
 }
 
 static inline CoyMemoryBlock 

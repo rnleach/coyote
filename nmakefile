@@ -21,10 +21,11 @@ CFLAGS = $(CFLAGS) /O2 /DNDEBUG /arch:AVX2 /openmp:experimental /Qvec-report:1
 
 !ENDIF
 
-TEST_OBJS = tests\test.obj     \
-		tests\time.obj     \
-		tests\fileio.obj   \
-		tests\memory.obj
+TEST_OBJS = tests\test.obj                 \
+            tests\time.obj                 \
+            tests\fileio.obj               \
+            tests\file_name_iterator.obj   \
+            tests\memory.obj
 
 all: test.exe test
 

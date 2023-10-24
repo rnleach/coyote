@@ -60,6 +60,10 @@ static inline uint64_t coy_time_now(void); // Get the current system time in sec
  *---------------------------------------------------------------------------------------------------------------------------
  * Check the 'valid' member of the structs to check for errors!
  */
+
+// Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
+static inline bool coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path);
+
 typedef struct
 {
     intptr_t handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
@@ -87,8 +91,27 @@ typedef struct
 static inline CoyMemMappedFile coy_memmap_read_only(char const *filename);
 static inline void coy_memmap_close(CoyMemMappedFile *file);
 
-// Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
-static inline bool coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path);
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                                File System Interactions
+ *---------------------------------------------------------------------------------------------------------------------------
+ * Check the 'valid' member of the structs to check for errors!
+ *
+ * WARNING: NONE OF THESE ARE THREADSAFE.
+ */
+
+typedef struct
+{
+    intptr_t os_handle;         // for internal use only
+    char const *file_extension;
+    bool valid;
+} CoyFileNameIter;
+
+// Create an iterator. file_extension can be NULL if you want all files. Does not list directories. NOT THREADSAFE.
+static inline CoyFileNameIter coy_file_name_iterator_open(char const *directory_path, char const *file_extension);
+
+// Returns NULL when done. Copy the string if you need it, it will be overwritten on the next call. NOT THREADSAFE.
+static inline char const *coy_file_name_iterator_next(CoyFileNameIter *cfni);
+static inline void coy_file_name_iterator_close(CoyFileNameIter *cfin); // should leave the argument zeroed. NOT THREADSAFE.
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                         Memory
@@ -121,10 +144,50 @@ static inline void coy_memory_free(CoyMemoryBlock *mem);
  *
  *
  *                                          Implementation of `inline` functions.
+ *                                                      Internal Only
  *
  *
  *
  *-------------------------------------------------------------------------------------------------------------------------*/
+
+// assumes zero terminated string returned from OS - not for general use.
+static inline char const *
+coy_file_extension(char const *path)
+{
+    char const *extension = path;
+    char const *next_char = path;
+    while(*next_char)
+    {
+        if(*next_char == '.')
+        {
+            extension = next_char + 1;
+        }
+        ++next_char;
+    }
+    return extension;
+}
+
+// assumes zero terminated string returned from OS - not for general use.
+static inline bool
+coy_null_term_strings_equal(char const *left, char const *right)
+{
+    char const *l = left;
+    char const *r = right;
+
+    while(*l && *r)
+    {
+        if(*l != *r)
+        {
+            return false;
+        }
+
+        ++l;
+        ++r;
+    }
+
+    return true;
+}
+
 #if defined(_WIN32) || defined(_WIN64)
   #include "coyote_win32.h"
 #elif defined(__linux__)

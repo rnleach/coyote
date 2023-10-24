@@ -13,6 +13,7 @@ main(int argc, char *argv[])
 
     coyote_time_tests();
     coyote_file_tests();
+    coyote_file_name_iterator_tests();
     coyote_memory_tests();
 
     printf("\n\n*** Tests completed successfully. ***\n\n");
