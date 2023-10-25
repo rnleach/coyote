@@ -3,6 +3,5 @@
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                               Apple/MacOSX Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
-#include "coyote_linux_apple_common.h"
-
+// Apple / BSD specific implementation goes here - things NOT in common with Linux
 #endif

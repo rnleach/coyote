@@ -5,6 +5,7 @@ VERBOSE = FALSE
 PROJDIR := $(realpath $(CURDIR)/)
 SOURCEDIR := $(PROJDIR)/src
 TESTDIR := $(PROJDIR)/tests
+BUILD_SCRIPT_DIR := $(PROJDIR)/build
 
 RELEASEDIR := $(PROJDIR)/release
 DEBUGDIR := $(PROJDIR)/debug
@@ -78,9 +79,15 @@ else
 	HIDE = @
 endif
 
-.PHONY: all clean directories test
+.PHONY: all clean directories test build
 
-all: makefile directories $(TEST_TARGET)
+all: build makefile directories $(TEST_TARGET)
+
+build: $(BUILD_SCRIPT_DIR)/build.c
+	@echo
+	@echo Building the build script from $<
+	$(HIDE)$(CC) $< -o $(BUILD_SCRIPT_DIR)/build
+	$(HIDE)cd $(BUILD_SCRIPT_DIR) && $(BUILD_SCRIPT_DIR)/build
 
 $(TEST_TARGET): directories makefile  $(OBJS)
 	@echo
@@ -100,14 +107,14 @@ directories:
 	@echo "Creating directory $(BUILDDIR)"
 	$(HIDE)mkdir -p $(BUILDDIR) 2>/dev/null
 
-test: directories makefile $(TEST_OBJS) $(OBJS)
+test: directories makefile build $(TEST_OBJS) $(OBJS)
 	@echo
 	@echo Linking $@
 	$(HIDE)$(CC)  $(TEST_OBJS) $(OBJS) $(LDLIBS) -o $(TEST_TARGET)
 	$(HIDE) $(TEST_TARGET)
 
 clean:
-	-$(HIDE)rm -rf $(DEBUGDIR) $(RELEASEDIR) tmp_output/*.txt 2>/dev/null
+	-$(HIDE)rm -rf $(DEBUGDIR) $(RELEASEDIR) tmp_output/*.txt $(BUILD_SCRIPT_DIR)/build $(BUILD_SCRIPT_DIR)/coyote.h 2>/dev/null
 	@echo
 	@echo Cleaning done!
 

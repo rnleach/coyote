@@ -189,13 +189,17 @@ coy_null_term_strings_equal(char const *left, char const *right)
 }
 
 #if defined(_WIN32) || defined(_WIN64)
-  #include "coyote_win32.h"
+#include "coyote_win32.h"
 #elif defined(__linux__)
-  #include "coyote_linux.h"
+#include "coyote_linux.h"
 #elif defined(__APPLE__)
-  #include "coyote_apple_osx.h"
+#include "coyote_apple_osx.h"
 #else
-  #error "Platform not supported by Coyote Library"
+#error "Platform not supported by Coyote Library"
+#endif
+
+#if defined(__linux__) || defined(__APPLE__)
+#include "coyote_linux_apple_common.h"
 #endif
 
 #endif

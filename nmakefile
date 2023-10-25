@@ -27,9 +27,20 @@ TEST_OBJS = tests\test.obj                 \
             tests\file_name_iterator.obj   \
             tests\memory.obj
 
-all: test.exe test
+all: build test.exe test
 
-$(TEST_OBJS): tests\test.h src\coyote.h src\coyote_win32.h
+build\build.exe: build\build.c src\coyote.h src\coyote_win32.h
+	@$(CC) $(CFLAGS)  /Febuild\build.exe build\build.c /link $(LDFLAGS) /STACK:4194304
+
+build: build\build.exe
+	@echo -------------------------------------------------------------------------------------------
+	@cd build
+	@build.exe
+	@cd ..
+
+build\coyote.h: build
+
+$(TEST_OBJS): tests\test.h build\coyote.h
 {tests}.c{tests}.obj:
 	@$(CC) $(CFLAGS) /c /Fo$*.obj $*.c 
 
@@ -42,5 +53,5 @@ test: test.exe
 
 clean:
 	@echo -------------------------------------------------------------------------------------------
-	@del tests\*.obj *.pdb *.exe *.ilk tmp_output\*.txt
+	@del tests\*.obj *.pdb *.exe *.obj *.ilk tmp_output\*.txt build\*.exe build\*.pdb build\*.ilk build\coyote.h
 

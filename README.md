@@ -23,6 +23,10 @@ Goals & Non-goals:
 
 ## Releases
 
+### Version 1.1.0 - IN PROGRESS
+  - (XXXX-XX-XX)
+  - Create a build program to combine the files into a single header instead of relying on includes.
+
 ### Version 1.0.0
   - (2023-10-21) Initial release.
   - Get the current system time.

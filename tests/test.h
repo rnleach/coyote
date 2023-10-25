@@ -10,7 +10,7 @@
 #endif
 
 #include <stdio.h>
-#include "../src/coyote.h"
+#include "../build/coyote.h"
 
 void coyote_time_tests(void);
 void coyote_file_tests(void);
