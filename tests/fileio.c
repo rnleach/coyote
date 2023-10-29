@@ -113,6 +113,32 @@ test_memmap_read(void)
     return;
 }
 
+static void
+test_file_slurp(void)
+{
+    // Create a path to the file.
+    char path_buf[1024] = {0};
+    bool success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
+    Assert(success);
+    success = coy_path_append(sizeof(path_buf), path_buf, "README.md");
+    Assert(success);
+
+    char file_contents[1024] = {0};
+    intptr_t str_sz = coy_file_slurp(path_buf, sizeof(file_contents), (unsigned char*)file_contents);
+    Assert(str_sz > 1);
+
+    char const test_str[] =
+	  "This directory should remain empty other than this file. It is used for writing test results into.\n\n";
+    Assert(str_sz == sizeof(test_str) - 1); // -1 because the literal adds a \0 to the end.
+
+    for(int i = 0; i < str_sz; ++i)
+    {
+	  Assert(test_str[i] == file_contents[i]); 
+    }
+
+    return;
+}
+
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                    All file IO tests
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -122,5 +148,6 @@ coyote_file_tests(void)
     test_file_size();
     test_file_create_write_append_open_read_close();
     test_memmap_read();
+    test_file_slurp();
 }
 

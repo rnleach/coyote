@@ -80,6 +80,9 @@ static inline void coy_file_close(CoyFile *file); // Must set valid member to fa
 
 static inline intptr_t coy_file_size(char const *filename); // size of a file in bytes, -1 on error.
 
+// return size in bytes of the loaded data or -1 on error. if buffer is too small, load nothing and return -1
+static inline intptr_t coy_file_slurp(char const *filename, intptr_t buf_size, unsigned char *buffer);
+
 typedef struct
 {
     intptr_t size_in_bytes; // size of the file
@@ -186,6 +189,25 @@ coy_null_term_strings_equal(char const *left, char const *right)
     }
 
     return true;
+}
+
+static inline intptr_t 
+coy_file_slurp(char const *filename, intptr_t buf_size, unsigned char *buffer)
+{
+    intptr_t file_size = coy_file_size(filename);
+    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
+
+    CoyFile file = coy_file_open_read(filename);
+    StopIf(!file.valid, goto ERR_RETURN);
+
+    intptr_t num_bytes = coy_file_read(&file, buf_size, buffer);
+    coy_file_close(&file);
+    StopIf(num_bytes != file_size, goto ERR_RETURN);
+
+    return num_bytes;
+
+ERR_RETURN:
+    return -1;
 }
 
 #if defined(_WIN32) || defined(_WIN64)
