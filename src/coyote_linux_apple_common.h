@@ -6,11 +6,9 @@
 
 #include <dirent.h>
 #include <fcntl.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 static inline uint64_t
 coy_time_now(void)
@@ -262,38 +260,6 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     DIR *d = (DIR *)cfin->os_handle;
     /*int rc = */ closedir(d);
     *cfin = (CoyFileNameIter){0};
-    return;
-}
-
-static inline CoyMemoryBlock 
-coy_memory_allocate(intptr_t minimum_num_bytes)
-{
-    Assert(minimum_num_bytes > 0);
-
-    long page_size = sysconf(_SC_PAGESIZE);
-    StopIf(page_size == -1, goto ERR_RETURN);
-    size_t nbytes = minimum_num_bytes + page_size - (minimum_num_bytes % page_size);
-
-    void *ptr = mmap(NULL,                     // the starting address, NULL = don't care
-                     nbytes,                   // the amount of memory to allocate
-                     PROT_READ | PROT_WRITE,   // we should have read and write access to the memory
-                     MAP_PRIVATE | MAP_ANON,   // not backed by a file, this is pure memory
-                     -1,                       // recommended file descriptor for portability
-                     0);                       // offset into what? this isn't a file, so should be zero
-
-    StopIf(ptr == MAP_FAILED, goto ERR_RETURN);
-
-    return (CoyMemoryBlock){ .mem = ptr, .size = nbytes, .valid = true };
-
-ERR_RETURN:
-    return (CoyMemoryBlock){ .mem = NULL, .size = 0, .valid = false};
-}
-
-static inline void
-coy_memory_free(CoyMemoryBlock *mem)
-{
-    /* int success = */ munmap(mem->mem, (size_t)mem->size);
-    mem->valid = false;
     return;
 }
 
