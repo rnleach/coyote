@@ -80,15 +80,15 @@ static inline void coy_file_close(CoyFile *file); // Must set valid member to fa
 
 static inline intptr_t coy_file_size(char const *filename); // size of a file in bytes, -1 on error.
 
-// return size in bytes of the loaded data or -1 on error. if buffer is too small, load nothing and return -1
+// return size in bytes of the loaded data or -1 on error. If buffer is too small, load nothing and return -1
 static inline intptr_t coy_file_slurp(char const *filename, intptr_t buf_size, unsigned char *buffer);
 
 typedef struct
 {
-    intptr_t size_in_bytes; // size of the file
+    intptr_t size_in_bytes;     // size of the file
     unsigned char const *data; 
-    intptr_t _internal[2];  // implementation specific data
-    bool valid;             // error indicator
+    intptr_t _internal[2];      // implementation specific data
+    bool valid;                 // error indicator
 } CoyMemMappedFile;
 
 static inline CoyMemMappedFile coy_memmap_read_only(char const *filename);
