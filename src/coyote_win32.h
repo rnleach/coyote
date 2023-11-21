@@ -379,12 +379,16 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
 
     SYSTEM_INFO info = {0};
     GetSystemInfo(&info);
-    DWORD page_size = info.dwPageSize;
-    DWORD alloc_gran = info.dwAllocationGranularity;
+    uintptr_t page_size = info.dwPageSize;
+    uintptr_t alloc_gran = info.dwAllocationGranularity;
 
-    DWORD target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
+    uintptr_t target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
 
-    DWORD allocation_size = minimum_num_bytes + target_granularity - (minimum_num_bytes % target_granularity);
+    uintptr_t allocation_size = minimum_num_bytes;
+    if(minimum_num_bytes % target_granularity)
+    {
+        allocation_size += target_granularity - (minimum_num_bytes % target_granularity);
+    }
 
     if(allocation_size > INTPTR_MAX)
     {
