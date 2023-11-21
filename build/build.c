@@ -1,36 +1,23 @@
+/* This program combines all the header files together into the final product, a single header library. */
 #include <stdio.h>
 
 #include "../src/coyote.h"
 
 void *memcpy(void *dest, const void *src, size_t n);
+int memcmp (const void * ptr1, const void * ptr2, size_t num);
+void *memchr(const void *, int, size_t);
 
 static inline bool
 str_eq(char const *left, char const *right, intptr_t len)
 {
-    for (intptr_t i = 0; i < len; ++i)
-    {
-        if (left[i] != right[i]) { return false; }
-    }
-
-    return true;
+    return 0 == memcmp(left, right, len);
 }
-
 
 static bool
 load_file(char const *fname, intptr_t buf_size, char *buffer, intptr_t *read)
 {
-    intptr_t expected_size = coy_file_size(fname);
-    StopIf(expected_size < 0, fprintf(stderr, "Error getting file size %s\n", fname); return false);
-
-    CoyFile f_ = coy_file_open_read(fname);
-    CoyFile *f = &f_;
-    StopIf(!f->valid, fprintf(stderr, "Error opening file %s\n", fname); return false);
-
-     *read = coy_file_read(f, buf_size, (unsigned char *)buffer);
-    StopIf(*read != expected_size, fprintf(stderr, "File Size Mismatch %s\n", fname); return false);
-
-    coy_file_close(f);
-
+    *read = coy_file_slurp(fname, buf_size, (unsigned char *)buffer);
+    if(*read < 0) { return false; }
     return true;
 }
 
@@ -58,7 +45,7 @@ main(int argc, char *argv[])
     char common_buffer[COY_KiB(100)] = {0};
     intptr_t co_size = 0;
 
-    char finished_lib[COY_MiB(1)] = {0};
+    char finished_lib[COY_KiB(350)] = {0};
 
     // Load all the files
     char const *fname = "../src/coyote.h";
@@ -82,41 +69,51 @@ main(int argc, char *argv[])
     StopIf(!success, return 1);
 
     // Merge them in a buffer
+    char *c = main_buffer;
+    char *end = memchr(c, '\0', sizeof(main_buffer));
+
+    char *insert_marker = memchr(c, '#', end - c);
+    Assert(insert_marker);
     intptr_t oi = 0; //output index
-    for(char *c = main_buffer; *c; ++c)
+    while(insert_marker - c < end - c)
     {
-        bool did_insert = false;
-        if(*c == '#' && *(c + 1) == 'i' && *(c + 2) == 'n' && *(c + 3) == 'c' && *(c + 4) == 'l' && *(c + 5) == 'u')
-        {
-            if(str_eq("#include \"coyote_win32.h\"", c, 25))
-            {
-                insert_buffer(sizeof(finished_lib), &oi, finished_lib, w32_size, win32_buffer);
-                c += 24;
-                did_insert = true;
-            }
-            else if(str_eq("#include \"coyote_linux.h\"", c, 25))
-            {
-                insert_buffer(sizeof(finished_lib), &oi, finished_lib, li_size, linux_buffer);
-                c += 24;
-                did_insert = true;
-            }
-            else if(str_eq("#include \"coyote_apple_osx.h\"", c, 29))
-            {
-                insert_buffer(sizeof(finished_lib), &oi, finished_lib, ap_size, apple_buffer);
-                c += 29;
-                did_insert = true;
-            }
-            else if(str_eq("#include \"coyote_linux_apple_common.h\"", c, 38))
-            {
-                insert_buffer(sizeof(finished_lib), &oi, finished_lib, co_size, common_buffer);
-                c += 38;
-                did_insert = true;
-            }
-        }
-        if(!did_insert)
-        {
-            finished_lib[oi++] = *c;
-        }
+	  if(str_eq("#include \"coyote_win32.h\"", insert_marker, 25))
+	  {
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, insert_marker - c, c);
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, w32_size, win32_buffer);
+		insert_marker += 25;
+		c = insert_marker;
+	  }
+	  else if(str_eq("#include \"coyote_linux.h\"", insert_marker, 25))
+	  {
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, insert_marker - c, c);
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, li_size, linux_buffer);
+		insert_marker += 25;
+		c = insert_marker;
+	  }
+	  else if(str_eq("#include \"coyote_apple_osx.h\"", insert_marker, 29))
+	  {
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, insert_marker - c, c);
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, ap_size, apple_buffer);
+		insert_marker += 29;
+		c = insert_marker;
+	  }
+	  else if(str_eq("#include \"coyote_linux_apple_common.h\"", insert_marker, 38))
+	  {
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, insert_marker - c, c);
+		insert_buffer(sizeof(finished_lib), &oi, finished_lib, co_size, common_buffer);
+		insert_marker += 38;
+		c = insert_marker;
+	  }
+	  else
+	  {
+		insert_marker = memchr(insert_marker + 1, '#', end - insert_marker);
+		if(!insert_marker)
+		{
+		    insert_buffer(sizeof(finished_lib), &oi, finished_lib, end - c, c);
+		    break;
+		}
+	  }
     }
 
     // Write out the buffer
