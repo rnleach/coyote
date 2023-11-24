@@ -139,13 +139,26 @@ coy_file_open_read(char const *filename)
 static inline intptr_t 
 coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
 {
-    _Static_assert(sizeof(ssize_t) == sizeof(intptr_t), "oh come on people. ssize_t != intptr_t!? Really!");
+    _Static_assert(sizeof(ssize_t) <= sizeof(intptr_t), "oh come on people. ssize_t != intptr_t!? Really!");
     Assert(buf_size > 0);
 
     StopIf(!file->valid, goto ERR_RETURN);
-    ssize_t num_bytes_read = read((int)file->handle, buffer, buf_size);
-    StopIf(num_bytes_read < 0, goto ERR_RETURN);
-    return (intptr_t) num_bytes_read;
+
+    intptr_t bytes_remaining = buf_size;
+    ssize_t num_bytes_read = 0;
+    ssize_t total_num_bytes_read = 0;
+    while(bytes_remaining)
+    {
+        num_bytes_read = read((int)file->handle, buffer + total_num_bytes_read, bytes_remaining);
+        bytes_remaining -= num_bytes_read;
+        total_num_bytes_read += num_bytes_read;
+
+        StopIf(num_bytes_read < 0, goto ERR_RETURN);
+
+        if(num_bytes_read == 0) { break; }
+    }
+
+    return (intptr_t) total_num_bytes_read;
 
 ERR_RETURN:
     return -1;
