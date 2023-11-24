@@ -73,9 +73,18 @@ typedef struct
 static inline CoyFile coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
 static inline CoyFile coy_file_append(char const *filename); // Create file if it doesn't exist yet, otherwise append.
 static inline intptr_t coy_file_write(CoyFile *file, intptr_t nbytes_write, unsigned char *buffer); // return nbytes written or -1 on error
+static inline bool coy_file_write_double(CoyFile *file, double val);
+static inline bool coy_file_write_i64(CoyFile *file, int64_t val);
+static inline bool coy_file_write_u64(CoyFile *file, uint64_t val);
+static inline bool coy_file_write_str(CoyFile *file, intptr_t len, char *str);
 
 static inline CoyFile coy_file_open_read(char const *filename);
 static inline intptr_t coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer); // return nbytes read or -1 on error
+static inline bool coy_file_read_double(CoyFile *file, double *val);
+static inline bool coy_file_read_i64(CoyFile *file, int64_t *val);
+static inline bool coy_file_read_u64(CoyFile *file, uint64_t *val);
+static inline bool coy_file_read_str(CoyFile *file, intptr_t *len, char *str); /* set len to buffer lenght, updated to actual size on return. */
+
 static inline void coy_file_close(CoyFile *file); // Must set valid member to false on success or failure!
 
 static inline intptr_t coy_file_size(char const *filename); // size of a file in bytes, -1 on error.
@@ -208,6 +217,79 @@ coy_file_slurp(char const *filename, intptr_t buf_size, unsigned char *buffer)
 
 ERR_RETURN:
     return -1;
+}
+
+static inline bool 
+coy_file_write_double(CoyFile *file, double val)
+{
+    intptr_t nbytes = coy_file_write(file, sizeof(val), (unsigned char *)&val);
+    if(nbytes != sizeof(val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_write_i64(CoyFile *file, int64_t val)
+{
+    intptr_t nbytes = coy_file_write(file, sizeof(val), (unsigned char *)&val);
+    if(nbytes != sizeof(val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_write_u64(CoyFile *file, uint64_t val)
+{
+    intptr_t nbytes = coy_file_write(file, sizeof(val), (unsigned char *)&val);
+    if(nbytes != sizeof(val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_write_str(CoyFile *file, intptr_t len, char *str)
+{
+    _Static_assert(sizeof(intptr_t) == sizeof(int64_t), "must not be on 64 bit!");
+    bool success = coy_file_write_i64(file, len);
+    StopIf(!success, return false);
+    intptr_t nbytes = coy_file_write(file, len, (unsigned char *)str);
+    if(nbytes != len) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_read_double(CoyFile *file, double *val)
+{
+    intptr_t nbytes = coy_file_read(file, sizeof(*val), (unsigned char *)val);
+    if(nbytes != sizeof(*val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_read_i64(CoyFile *file, int64_t *val)
+{
+    intptr_t nbytes = coy_file_read(file, sizeof(*val), (unsigned char *)val);
+    if(nbytes != sizeof(*val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_read_u64(CoyFile *file, uint64_t *val)
+{
+    intptr_t nbytes = coy_file_read(file, sizeof(*val), (unsigned char *)val);
+    if(nbytes != sizeof(*val)) { return false; }
+    return true;
+}
+
+static inline bool 
+coy_file_read_str(CoyFile *file, intptr_t *len, char *str)
+{
+    intptr_t str_len = 0;
+    bool success = coy_file_read_i64(file, &str_len);
+    StopIf(!success || str_len > *len, return false);
+
+    success = coy_file_read(file, str_len, (unsigned char *)str);
+    StopIf(!success, return false);
+
+    *len = str_len;
+    return true;
 }
 
 #if defined(_WIN32) || defined(_WIN64)
