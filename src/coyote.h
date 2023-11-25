@@ -295,7 +295,7 @@ coy_file_read_str(CoyFile *file, intptr_t *len, char *str)
     else
     {
         /* Clear the provided buffer. */
-        memset(str, 0, (size_t)len);
+        memset(str, 0, *len);
     }
 
     *len = str_len;
