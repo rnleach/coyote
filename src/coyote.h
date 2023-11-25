@@ -14,10 +14,9 @@
   #define true 1
 #endif
 
-#if 0
-// string.h
-void *memcpy(void *dst, void const *src, size_t num_bytes);
 void *memset(void *buffer, int val, size_t num_bytes);
+#if 0
+void *memcpy(void *dst, void const *src, size_t num_bytes);
 int memcmp(const void *s1, const void *s2, size_t num_bytes);
 #endif
 
@@ -249,8 +248,11 @@ coy_file_write_str(CoyFile *file, intptr_t len, char *str)
     _Static_assert(sizeof(intptr_t) == sizeof(int64_t), "must not be on 64 bit!");
     bool success = coy_file_write_i64(file, len);
     StopIf(!success, return false);
-    intptr_t nbytes = coy_file_write(file, len, (unsigned char *)str);
-    if(nbytes != len) { return false; }
+    if(len > 0)
+    {
+        intptr_t nbytes = coy_file_write(file, len, (unsigned char *)str);
+        if(nbytes != len) { return false; }
+    }
     return true;
 }
 
@@ -285,8 +287,16 @@ coy_file_read_str(CoyFile *file, intptr_t *len, char *str)
     bool success = coy_file_read_i64(file, &str_len);
     StopIf(!success || str_len > *len, return false);
 
-    success = coy_file_read(file, str_len, (unsigned char *)str);
-    StopIf(!success, return false);
+    if(str_len > 0)
+    {
+        success = coy_file_read(file, str_len, (unsigned char *)str);
+        StopIf(!success, return false);
+    }
+    else
+    {
+        /* Clear the provided buffer. */
+        memset(str, 0, (size_t)len);
+    }
 
     *len = str_len;
     return true;
