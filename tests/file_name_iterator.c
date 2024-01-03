@@ -67,12 +67,39 @@ test_file_name_iterator_filtering(void)
     Assert(iter->os_handle == 0 && iter->file_extension == NULL && iter->valid == false);
 }
 
+static void
+test_null_term_strings_equal(void)
+{
+    char *left[5] = {"test", "test1", "test2", "test3", "test4"};
+    char *right[5] = {"test", "test1", "test2", "test3", "test4"};
+
+    for(int i = 0; i < 5; ++i)
+    {
+        Assert(coy_null_term_strings_equal(left[i], right[i]));
+
+        for(int j = 0; j < 5; ++j)
+        {
+            if(i != j)
+            {
+                Assert(!coy_null_term_strings_equal(left[i], left[j]));
+                Assert(!coy_null_term_strings_equal(right[i], right[j]));
+            }
+            else
+            {
+                Assert(coy_null_term_strings_equal(left[i], left[j]));
+                Assert(coy_null_term_strings_equal(right[i], right[j]));
+            }
+        }
+    }
+}
+
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                    All file IO tests
  *-------------------------------------------------------------------------------------------------------------------------*/
 void
 coyote_file_name_iterator_tests(void)
 {
+    test_null_term_strings_equal();
     test_file_name_iterator();
     test_file_name_iterator_filtering();
 }

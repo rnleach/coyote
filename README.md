@@ -25,6 +25,7 @@ Goals & Non-goals:
 
 ### Version 1.1.0 - IN PROGRESS
   - (XXXX-XX-XX)
+  - Bug fix for file iterator.
   - Add more convenience functions for file IO.
   - Create a build program to combine the files into a single header instead of relying on includes.
 

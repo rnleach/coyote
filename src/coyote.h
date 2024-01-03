@@ -198,7 +198,7 @@ coy_null_term_strings_equal(char const *left, char const *right)
     char const *l = left;
     char const *r = right;
 
-    while(*l && *r)
+    while(*l || *r)
     {
         if(*l != *r)
         {
