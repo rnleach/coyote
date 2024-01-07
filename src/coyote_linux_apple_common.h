@@ -278,7 +278,7 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
 }
 
 static inline CoyThread
-coy_create_thread(CoyThreadFunc func, void *thread_data)
+coy_thread_create(CoyThreadFunc func, void *thread_data)
 {
     pthread_t thread = {0};
     int status = pthread_create(&thread, NULL, func, thread_data);
@@ -293,7 +293,7 @@ coy_create_thread(CoyThreadFunc func, void *thread_data)
 }
 
 static inline bool
-coy_join_thread(CoyThread *thread)
+coy_thread_join(CoyThread *thread)
 {
 
     int status = pthread_join(thread->thread, &thread->ret_val);
@@ -308,7 +308,7 @@ coy_destroy_thread(CoyThread *thread)
 }
 
 static inline CoyMutex 
-coy_create_mutex()
+coy_mutex_create()
 {
     pthread_mutex_t mut = {0};
     int status = pthread_mutex_init(&mut, NULL);
