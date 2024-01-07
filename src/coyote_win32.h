@@ -427,7 +427,7 @@ coy_thread_create(CoyThreadFunc func, void *thread_data)
         func,        // [in]            LPTHREAD_START_ROUTINE  lpStartAddress,
         thread_data, // [in, optional]  __drv_aliasesMem LPVOID lpParameter,
         0,           // [in]            DWORD                   dwCreationFlags,
-        &id,         // [out, optional] LPDWORD                 lpThreadId
+        &id          // [out, optional] LPDWORD                 lpThreadId
     );
 
     if(h == INVALID_HANDLE_VALUE)
@@ -451,7 +451,6 @@ coy_thread_join(CoyThread *thread)
 
     if(!success) { return false; }
 
-    thread->ret_val = ret_val;
     return true;
 }
 
@@ -463,12 +462,12 @@ coy_thread_destroy(CoyThread *thread)
 }
 
 static inline CoyMutex 
-coy_mutex_create();
+coy_mutex_create()
 {
     HANDLE h = CreateMutexA(
       NULL,  //[in, optional] LPSECURITY_ATTRIBUTES lpMutexAttributes,
       FALSE, // [in]           BOOL                  bInitialOwner,
-      NULL,  // [in, optional] LPCSTR                lpName
+      NULL   // [in, optional] LPCSTR                lpName
     );
 
     if(h == NULL) { return (CoyMutex){ .valid = false }; }
