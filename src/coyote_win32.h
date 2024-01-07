@@ -408,7 +408,6 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
 static inline void
 coy_memory_free(CoyMemoryBlock *mem)
 {
-    Assert(mem);
     if(mem->valid)
     {
          /*BOOL success =*/ VirtualFree(mem->mem, 0, MEM_RELEASE);
@@ -416,6 +415,88 @@ coy_memory_free(CoyMemoryBlock *mem)
     }
 
     return;
+}
+
+static inline CoyThread
+coy_thread_create(CoyThreadFunc func, void *thread_data)
+{
+    DWORD id = 0;
+    HANDLE h =  CreateThread(
+        NULL,        // [in, optional]  LPSECURITY_ATTRIBUTES   lpThreadAttributes,
+        0,           // [in]            SIZE_T                  dwStackSize,
+        func,        // [in]            LPTHREAD_START_ROUTINE  lpStartAddress,
+        thread_data, // [in, optional]  __drv_aliasesMem LPVOID lpParameter,
+        0,           // [in]            DWORD                   dwCreationFlags,
+        &id,         // [out, optional] LPDWORD                 lpThreadId
+    );
+
+    if(h == INVALID_HANDLE_VALUE)
+    {
+        return (CoyThread){ .valid=false };
+    }
+
+    return (CoyThread){ .thread_handle = h, .thread_id = id, .ret_val = -1, .valid=true };
+}
+
+static inline bool
+coy_thread_join(CoyThread *thread)
+{
+    DWORD status = WaitForSingleObject(thread->thread_handle, INFINITE);
+    if(status != WAIT_OBJECT_0) { return false; }
+
+    BOOL success = GetExitCodeThread(
+      thread->thread_handle, // [in]  HANDLE  hThread,
+      &thread->ret_val       // [out] LPDWORD lpExitCode
+    );
+
+    if(!success) { return false; }
+
+    thread->ret_val = ret_val;
+    return true;
+}
+
+static inline void 
+coy_thread_destroy(CoyThread *thread)
+{
+    /* BOOL success = */ CloseHandle(thread->thread_handle);
+    thread->valid = false;
+}
+
+static inline CoyMutex 
+coy_mutex_create();
+{
+    HANDLE h = CreateMutexA(
+      NULL,  //[in, optional] LPSECURITY_ATTRIBUTES lpMutexAttributes,
+      FALSE, // [in]           BOOL                  bInitialOwner,
+      NULL,  // [in, optional] LPCSTR                lpName
+    );
+
+    if(h == NULL) { return (CoyMutex){ .valid = false }; }
+    
+    return (CoyMutex){ .mutex = h, .valid = true };
+}
+
+static inline bool 
+coy_mutex_lock(CoyMutex *mutex)
+{
+    DWORD status =  WaitForSingleObject(
+      mutex->mutex, // [in] HANDLE hHandle,
+      INFINITE      // [in] DWORD  dwMilliseconds
+    );
+
+    if(status == WAIT_OBJECT_0) { return true; }
+    
+    return false;
+}
+
+static inline bool 
+coy_mutex_unlock(CoyMutex *mutex)
+{
+    BOOL status = ReleaseMutex(
+      mutex->mutex  // [in] HANDLE hMutex
+    );
+    
+    return status;
 }
 
 #endif

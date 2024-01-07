@@ -11,7 +11,7 @@ RELEASEDIR := $(PROJDIR)/release
 DEBUGDIR := $(PROJDIR)/debug
 
 CFLAGS = -Wall -Werror -std=c11 -D_DEFAULT_SOURCE -I$(SOURCEDIR) -I$(TESTDIR)
-LDLIBS = -lm
+LDLIBS = -lm -lpthread
 ifeq ($(DEBUG),1)
 	CFLAGS += -g3
 	LDLIBS +=

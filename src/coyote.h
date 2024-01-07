@@ -15,10 +15,6 @@
 #endif
 
 void *memset(void *buffer, int val, size_t num_bytes);
-#if 0
-void *memcpy(void *dst, void const *src, size_t num_bytes);
-int memcmp(const void *s1, const void *s2, size_t num_bytes);
-#endif
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                       Error Handling
@@ -162,6 +158,68 @@ typedef struct
 
 static inline CoyMemoryBlock coy_memory_allocate(intptr_t minimum_num_bytes);
 static inline void coy_memory_free(CoyMemoryBlock *mem);
+
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                        Multi-threading & Syncronization
+ *---------------------------------------------------------------------------------------------------------------------------
+ * Basic threading and syncronization.
+ */
+
+/* Windows requires a uint32_t return type while Linux (pthreads) requires a void*. Just return 0 or 1 to indicate success
+ * and Coyote will cast it to the correct type for the API.
+ */
+#if defined(_WIN32) || defined(_WIN64)
+
+typedef uint32_t CoyThreadFunReturnType;
+
+typedef struct 
+{
+    /* Win32 HANDLE = void * */
+    void *thread_handle;
+    CoyThreadFunReturnType ret_val;
+    uint32_t thread_id;
+    bool valid;
+} CoyThread;
+
+typedef struct 
+{
+    /* Win32 HANDLE = void * */
+    void *mutex;
+    bool valid;
+} CoyMutex;
+
+#elif defined(__linux__) || defined(__APPLE__)
+#include <pthread.h>
+
+typedef void* CoyThreadFunReturnType;
+
+typedef struct 
+{
+    pthread_t thread;
+    CoyThreadFunReturnType ret_val;
+    bool valid;
+} CoyThread;
+
+typedef struct 
+{
+    pthread_mutex_t mutex;
+    bool valid;
+} CoyMutex;
+
+#else
+#error "Platform not supported by Coyote Library"
+#endif
+
+typedef CoyThreadFunReturnType (*CoyThreadFunc)(void *thread_data);
+
+static inline CoyThread coy_thread_create(CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
+static inline bool coy_thread_join(CoyThread *thread); /* Returns false if there was an error. */
+static inline void coy_thread_destroy(CoyThread *thread);
+#define coy_thread_get_result(thread) (thread).ret_val
+
+static inline CoyMutex coy_mutex_create();
+static inline bool coy_mutex_lock(CoyMutex *mutex);   /* Block, return false on failure. */
+static inline bool coy_mutex_unlock(CoyMutex *mutex); /* Return false on failure. */
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *

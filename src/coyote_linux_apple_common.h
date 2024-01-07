@@ -6,6 +6,7 @@
 
 #include <dirent.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -274,6 +275,65 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     /*int rc = */ closedir(d);
     *cfin = (CoyFileNameIter){0};
     return;
+}
+
+static inline CoyThread
+coy_create_thread(CoyThreadFunc func, void *thread_data)
+{
+    pthread_t thread = {0};
+    int status = pthread_create(&thread, NULL, func, thread_data);
+    if(status == 0)
+    {
+        return (CoyThread){ .thread = thread, .ret_val = NULL, .valid = true };
+    }
+    else
+    {
+        return (CoyThread){ .valid = false };
+    }
+}
+
+static inline bool
+coy_join_thread(CoyThread *thread)
+{
+
+    int status = pthread_join(thread->thread, &thread->ret_val);
+    if(status == 0) { return true; }
+    return false;
+}
+
+static inline void 
+coy_destroy_thread(CoyThread *thread)
+{
+    thread->valid = false;
+}
+
+static inline CoyMutex 
+coy_create_mutex()
+{
+    pthread_mutex_t mut = {0};
+    int status = pthread_mutex_init(&mut, NULL);
+    if(status == 0)
+    {
+        return (CoyMutex){ .mutex=mut, .valid=true };
+    }
+
+    return (CoyMutex){ .valid=false };
+}
+
+static inline bool 
+coy_mutex_lock(CoyMutex *mutex)
+{
+    int status = pthread_mutex_lock(&mutex->mutex);
+    if(status == 0) { return true; }
+    return false;
+}
+
+static inline bool 
+coy_mutex_unlock(CoyMutex *mutex)
+{
+    int status = pthread_mutex_unlock(&mutex->mutex);
+    if(status == 0) { return true; }
+    return false;
 }
 
 #endif
