@@ -1,5 +1,7 @@
 #ifndef _COYOTE_WIN32_H_
 #define _COYOTE_WIN32_H_
+
+#pragma warning(disable: 4142)
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Windows Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -132,7 +134,7 @@ CoyFile coy_file_append(char const *filename)
 }
 
 static inline size 
-coy_file_write(CoyFile *file, size nbytes_write, byte *buffer)
+coy_file_write(CoyFile *file, size nbytes_write, byte const *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -498,4 +500,5 @@ coy_mutex_unlock(CoyMutex *mutex)
     return status;
 }
 
+#pragma warning(default: 4142)
 #endif
