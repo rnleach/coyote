@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-static inline uint64_t
+static inline u64
 coy_time_now(void)
 {
     struct timeval tv = {0};
@@ -29,10 +29,10 @@ ERR_RETURN:
 static char const coy_path_sep = '/';
 
 static inline bool 
-coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+coy_path_append(size buf_len, char path_buffer[], char const *new_path)
 {
     // Find first '\0'
-    intptr_t position = 0;
+    size position = 0;
     char *c = path_buffer;
     while(position < buf_len && *c)
     {
@@ -80,11 +80,11 @@ coy_file_create(char const *filename)
 
     if (fd >= 0)
     {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = true  };
+        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = false };
+        return (CoyFile){ .handle = (iptr) fd, .valid = false };
     }
 }
 
@@ -96,25 +96,25 @@ CoyFile coy_file_append(char const *filename)
                    S_IRWXU | S_IRGRP | S_IXGRP |S_IROTH | S_IXOTH); // Default permissions 0755
 
     if (fd >= 0) {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = true  };
+        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = false };
+        return (CoyFile){ .handle = (iptr) fd, .valid = false };
     }
 }
 
-static inline intptr_t 
-coy_file_write(CoyFile *file, intptr_t nbytes_to_write, unsigned char *buffer)
+static inline size 
+coy_file_write(CoyFile *file, size nbytes_to_write, byte const *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
-    _Static_assert(sizeof(ssize_t) == sizeof(intptr_t), "oh come on people. ssize_t != intptr_t!? Really!");
+    _Static_assert(sizeof(ssize_t) == sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
     Assert(nbytes_to_write >= 0);
 
     ssize_t num_bytes_written = write((int)file->handle, buffer, nbytes_to_write);
     StopIf(num_bytes_written < 0, goto ERR_RETURN);
-    return (intptr_t) num_bytes_written;
+    return (size) num_bytes_written;
 
 ERR_RETURN:
     return -1;
@@ -129,23 +129,23 @@ coy_file_open_read(char const *filename)
 
     if (fd >= 0)
     {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = true  };
+        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (intptr_t) fd, .valid = false };
+        return (CoyFile){ .handle = (iptr) fd, .valid = false };
     }
 }
 
-static inline intptr_t 
-coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
+static inline size 
+coy_file_read(CoyFile *file, size buf_size, byte *buffer)
 {
-    _Static_assert(sizeof(ssize_t) <= sizeof(intptr_t), "oh come on people. ssize_t != intptr_t!? Really!");
+    _Static_assert(sizeof(ssize_t) <= sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
     Assert(buf_size > 0);
 
     StopIf(!file->valid, goto ERR_RETURN);
 
-    intptr_t bytes_remaining = buf_size;
+    size bytes_remaining = buf_size;
     ssize_t num_bytes_read = 0;
     ssize_t total_num_bytes_read = 0;
     while(bytes_remaining)
@@ -159,7 +159,7 @@ coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
         if(num_bytes_read == 0) { break; }
     }
 
-    return (intptr_t) total_num_bytes_read;
+    return (size) total_num_bytes_read;
 
 ERR_RETURN:
     return -1;
@@ -172,23 +172,23 @@ coy_file_close(CoyFile *file)
     file->valid = false;
 }
 
-static inline intptr_t 
+static inline size 
 coy_file_size(char const *filename)
 {
-    _Static_assert(sizeof(off_t) == 8 && sizeof(intptr_t) == sizeof(off_t), "Need 64-bit off_t");
+    _Static_assert(sizeof(off_t) == 8 && sizeof(size) == sizeof(off_t), "Need 64-bit off_t");
     struct stat statbuf = {0};
     int success = stat(filename, &statbuf);
     StopIf(success != 0, return -1);
 
-    return (intptr_t)statbuf.st_size;
+    return (size)statbuf.st_size;
 }
 
 static inline CoyMemMappedFile 
 coy_memmap_read_only(char const *filename)
 {
-    _Static_assert(sizeof(size_t) == sizeof(intptr_t), "sizeof(size_t) != sizeof(intptr_t)");
+    _Static_assert(sizeof(usize) == sizeof(size), "sizeof(size_t) != sizeof(intptr_t)");
 
-    intptr_t size_in_bytes = coy_file_size(filename);
+    size size_in_bytes = coy_file_size(filename);
     StopIf(size_in_bytes == -1, goto ERR_RETURN);
 
     int fd = open( filename, // char const *pathname
@@ -196,17 +196,17 @@ coy_memmap_read_only(char const *filename)
                    0);       // No mode information needed.
     StopIf(fd < 0, goto ERR_RETURN);
 
-    unsigned char const *data = mmap(NULL,           // Starting address - OS chooses
-                                     size_in_bytes,  // The size of the mapping,should be the file size for this
-                                     PROT_READ,      // Read only access
-                                     MAP_PRIVATE,    // flags - not sure if anything is necessary for read only
-                                     fd,             // file descriptor for the file to map
-                                     0);             // offset into the file to read
+    byte const *data = mmap(NULL,           // Starting address - OS chooses
+                            size_in_bytes,  // The size of the mapping,should be the file size for this
+                            PROT_READ,      // Read only access
+                            MAP_PRIVATE,    // flags - not sure if anything is necessary for read only
+                            fd,             // file descriptor for the file to map
+                            0);             // offset into the file to read
 
     close(fd);
     StopIf(data == MAP_FAILED, goto ERR_RETURN);
 
-    return (CoyMemMappedFile){ .size_in_bytes = (intptr_t)size_in_bytes, 
+    return (CoyMemMappedFile){ .size_in_bytes = (size)size_in_bytes, 
                                .data = data, 
                                ._internal = {0}, 
                                .valid = true 
@@ -231,7 +231,7 @@ coy_file_name_iterator_open(char const *directory_path, char const *file_extensi
     DIR *d = opendir(directory_path);
     StopIf(!d, goto ERR_RETURN);
 
-    return (CoyFileNameIter){ .os_handle = (intptr_t)d, .file_extension=file_extension, .valid=true};
+    return (CoyFileNameIter){ .os_handle = (iptr)d, .file_extension=file_extension, .valid=true};
 
 ERR_RETURN:
     return (CoyFileNameIter) {.valid=false};

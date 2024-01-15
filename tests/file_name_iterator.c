@@ -15,7 +15,7 @@ test_file_name_iterator(void)
     CoyFileNameIter iter_ = coy_file_name_iterator_open("src", NULL);
     CoyFileNameIter *iter = &iter_;
 
-    int count = 0;
+    i32 count = 0;
     const char *fname = coy_file_name_iterator_next(iter);
     while(fname)
     {
@@ -52,7 +52,7 @@ test_file_name_iterator_filtering(void)
     CoyFileNameIter *iter = &iter_;
 
     const char *fname = coy_file_name_iterator_next(iter);
-    int count = 0;
+    i32 count = 0;
     while(fname)
     {
         Assert(strcmp(fname, readme) == 0);

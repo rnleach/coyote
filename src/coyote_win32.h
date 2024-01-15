@@ -13,7 +13,7 @@ union WinTimePun
     ULARGE_INTEGER as_uint64;
 };
 
-static inline uint64_t
+static inline u64
 coy_time_now(void)
 {
     SYSTEMTIME now_st = {0};
@@ -47,10 +47,10 @@ ERR_RETURN:
 static char const coy_path_sep = '\\';
 
 static inline bool 
-coy_path_append(intptr_t buf_len, char path_buffer[], char const *new_path)
+coy_path_append(size buf_len, char path_buffer[], char const *new_path)
 {
     // Find first '\0'
-    intptr_t position = 0;
+    size position = 0;
     char *c = path_buffer;
     while(position < buf_len && *c)
     {
@@ -102,11 +102,11 @@ coy_file_create(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+        return (CoyFile){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
@@ -123,16 +123,16 @@ CoyFile coy_file_append(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+        return (CoyFile){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
-static inline intptr_t 
-coy_file_write(CoyFile *file, intptr_t nbytes_write, unsigned char *buffer)
+static inline size 
+coy_file_write(CoyFile *file, size nbytes_write, byte *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -146,7 +146,7 @@ coy_file_write(CoyFile *file, intptr_t nbytes_write, unsigned char *buffer)
     );
 
     StopIf(!success, goto ERR_RETURN);
-    return (intptr_t)nbytes_written;
+    return (size)nbytes_written;
     
 ERR_RETURN:
     return -1;
@@ -165,16 +165,16 @@ coy_file_open_read(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (intptr_t)fh, .valid = true};
+        return (CoyFile){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (intptr_t)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
-static inline intptr_t 
-coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
+static inline size 
+coy_file_read(CoyFile *file, size buf_size, byte *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -186,7 +186,7 @@ coy_file_read(CoyFile *file, intptr_t buf_size, unsigned char *buffer)
                              NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
     StopIf(!success, goto ERR_RETURN);
-    return (intptr_t)nbytes_read;
+    return (size)nbytes_read;
     
 ERR_RETURN:
     return -1;
@@ -201,18 +201,18 @@ coy_file_close(CoyFile *file)
     return;
 }
 
-static inline intptr_t 
+static inline size 
 coy_file_size(char const *filename)
 {
     WIN32_FILE_ATTRIBUTE_DATA attr = {0};
     BOOL success = GetFileAttributesExA(filename, GetFileExInfoStandard, &attr);
     StopIf(!success, goto ERR_RETURN);
 
-    _Static_assert(sizeof(uintptr_t) == 2 * sizeof(DWORD) && sizeof(DWORD) == 4);
-    uintptr_t file_size = ((uintptr_t)attr.nFileSizeHigh << 32) | attr.nFileSizeLow;
+    _Static_assert(sizeof(uptr) == 2 * sizeof(DWORD) && sizeof(DWORD) == 4);
+    uptr file_size = ((uptr)attr.nFileSizeHigh << 32) | attr.nFileSizeLow;
     StopIf(file_size > INTPTR_MAX, goto ERR_RETURN);
 
-    return (intptr_t) file_size;
+    return (size) file_size;
 
 ERR_RETURN:
     return -1;
@@ -244,14 +244,14 @@ coy_memmap_read_only(char const *filename)
     DWORD file_size_low = GetFileSize((HANDLE)cf.handle, &file_size_high);
     StopIf(file_size_low == INVALID_FILE_SIZE, goto CLOSE_FMH_AND_ERR);
 
-    uintptr_t file_size = ((uintptr_t)file_size_high << 32) | file_size_low;
+    uptr file_size = ((uptr)file_size_high << 32) | file_size_low;
     StopIf(file_size > INTPTR_MAX, goto CLOSE_FMH_AND_ERR);
 
 
     return (CoyMemMappedFile){
-      .size_in_bytes = (intptr_t)file_size, 
+      .size_in_bytes = (size)file_size, 
         .data = ptr, 
-        ._internal = { cf.handle, (intptr_t)fmh }, 
+        ._internal = { cf.handle, (size)fmh }, 
         .valid = true 
     };
 
@@ -267,7 +267,7 @@ static inline void
 coy_memmap_close(CoyMemMappedFile *file)
 {
     void const*data = file->data;
-    intptr_t fh = file->_internal[0];
+    iptr fh = file->_internal[0];
     HANDLE fmh = (HANDLE)file->_internal[1];
 
     /*BOOL success = */UnmapViewOfFile(data);
@@ -301,7 +301,7 @@ coy_file_name_iterator_open(char const *directory_path, char const *file_extensi
 
     HANDLE finder = FindFirstFile(path_buf, &coy_file_name_iterator_data);
     StopIf(finder == INVALID_HANDLE_VALUE, goto ERR_RETURN);
-    return (CoyFileNameIter) { .os_handle=(intptr_t)finder, .file_extension=file_extension, .valid=true };
+    return (CoyFileNameIter) { .os_handle=(iptr)finder, .file_extension=file_extension, .valid=true };
 
 ERR_RETURN:
     return (CoyFileNameIter) { .valid=false };
@@ -370,7 +370,7 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
 }
 
 static inline CoyMemoryBlock 
-coy_memory_allocate(intptr_t minimum_num_bytes)
+coy_memory_allocate(size minimum_num_bytes)
 {
     if(minimum_num_bytes <= 0)
     {
@@ -379,12 +379,12 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
 
     SYSTEM_INFO info = {0};
     GetSystemInfo(&info);
-    uintptr_t page_size = info.dwPageSize;
-    uintptr_t alloc_gran = info.dwAllocationGranularity;
+    uptr page_size = info.dwPageSize;
+    uptr alloc_gran = info.dwAllocationGranularity;
 
-    uintptr_t target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
+    uptr target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
 
-    uintptr_t allocation_size = minimum_num_bytes;
+    uptr allocation_size = minimum_num_bytes;
     if(minimum_num_bytes % target_granularity)
     {
         allocation_size += target_granularity - (minimum_num_bytes % target_granularity);
@@ -394,7 +394,7 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
     {
          return (CoyMemoryBlock){.mem = 0, .size = INTPTR_MAX, .valid = false };
     }
-    int64_t size = (int64_t)allocation_size;
+    size a_size = (size)allocation_size;
 
     void *mem = VirtualAlloc(NULL, allocation_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if(!mem)
@@ -402,7 +402,7 @@ coy_memory_allocate(intptr_t minimum_num_bytes)
          return (CoyMemoryBlock){.mem = 0, .size = 0, .valid = false };
     }
 
-    return (CoyMemoryBlock){.mem = mem, .size = size, .valid = true };
+    return (CoyMemoryBlock){.mem = mem, .size = a_size, .valid = true };
 }
 
 static inline void

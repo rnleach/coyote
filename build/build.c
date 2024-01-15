@@ -8,21 +8,21 @@ int memcmp (const void * ptr1, const void * ptr2, size_t num);
 void *memchr(const void *, int, size_t);
 
 static inline bool
-str_eq(char const *left, char const *right, intptr_t len)
+str_eq(char const *left, char const *right, size len)
 {
     return 0 == memcmp(left, right, len);
 }
 
 static bool
-load_file(char const *fname, intptr_t buf_size, char *buffer, intptr_t *read)
+load_file(char const *fname, size buf_size, byte *buffer, size *read)
 {
-    *read = coy_file_slurp(fname, buf_size, (unsigned char *)buffer);
+    *read = coy_file_slurp(fname, buf_size, buffer);
     if(*read < 0) { return false; }
     return true;
 }
 
 static void
-insert_buffer(intptr_t out_size, intptr_t *out_idx, char *out, intptr_t in_size, char *in)
+insert_buffer(size out_size, size *out_idx, char *out, size in_size, char *in)
 {
     Assert(*out_idx + in_size < out_size);
 
@@ -35,15 +35,15 @@ int
 main(int argc, char *argv[])
 {
     char main_buffer[COY_KiB(100)] = {0};
-    intptr_t mb_size = 0;
+    size mb_size = 0;
     char win32_buffer[COY_KiB(100)] = {0};
-    intptr_t w32_size = 0;
+    size w32_size = 0;
     char apple_buffer[COY_KiB(20)] = {0};
-    intptr_t ap_size = 0;
+    size ap_size = 0;
     char linux_buffer[COY_KiB(20)] = {0};
-    intptr_t li_size = 0;
+    size li_size = 0;
     char common_buffer[COY_KiB(100)] = {0};
-    intptr_t co_size = 0;
+    size co_size = 0;
 
     char finished_lib[COY_KiB(350)] = {0};
 
@@ -74,7 +74,7 @@ main(int argc, char *argv[])
 
     char *insert_marker = memchr(c, '#', end - c);
     Assert(insert_marker);
-    intptr_t oi = 0; //output index
+    size oi = 0; //output index
     while(insert_marker - c < end - c)
     {
 	  if(str_eq("#include \"coyote_win32.h\"", insert_marker, 25))
@@ -121,7 +121,7 @@ main(int argc, char *argv[])
     CoyFile *coyote = &coyote_;
     StopIf(!coyote->valid, fprintf(stderr, "Error opening coyote.h for output\n"); return 1);
 
-    intptr_t coyote_wrote = coy_file_write(coyote, oi, (unsigned char *)finished_lib);
+    size coyote_wrote = coy_file_write(coyote, oi, finished_lib);
 
     coy_file_close(coyote);
 }

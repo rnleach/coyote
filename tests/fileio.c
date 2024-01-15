@@ -17,7 +17,7 @@ test_file_size(void)
     success = coy_path_append(sizeof(path_buf), path_buf, "README.md");
     Assert(success);
 
-    intptr_t file_size = coy_file_size(path_buf);
+    size file_size = coy_file_size(path_buf);
     Assert(file_size == 100);
 
     // Now try accessing an invalid file!
@@ -48,7 +48,7 @@ test_file_create_write_append_open_read_close(void)
     Assert(write_test.valid);
 
     char const hello_str[] = "Hello File.\n";
-    intptr_t num_bytes_written = coy_file_write(&write_test, sizeof(hello_str) - 1, (unsigned char *)hello_str);
+    size num_bytes_written = coy_file_write(&write_test, sizeof(hello_str) - 1, hello_str);
     Assert(num_bytes_written == sizeof(hello_str) - 1);
 
     coy_file_close(&write_test);
@@ -59,7 +59,7 @@ test_file_create_write_append_open_read_close(void)
     Assert(append_test.valid);
 
     char const hello_again_str[] = "Hello Again File.\n";
-    num_bytes_written = coy_file_write(&append_test, sizeof(hello_again_str) - 1, (unsigned char *)hello_again_str);
+    num_bytes_written = coy_file_write(&append_test, sizeof(hello_again_str) - 1, hello_again_str);
     Assert(num_bytes_written == sizeof(hello_again_str) - 1);
 
     coy_file_close(&append_test);
@@ -69,7 +69,7 @@ test_file_create_write_append_open_read_close(void)
     CoyFile read_test = coy_file_open_read(path_buf);
     Assert(read_test.valid);
     char read_str[40] = {0};
-    intptr_t num_bytes_read = coy_file_read(&read_test, sizeof(read_str), (unsigned char *)read_str);
+    size num_bytes_read = coy_file_read(&read_test, sizeof(read_str), read_str);
     Assert(num_bytes_read == 30);
     char const should_have_read_str[] = "Hello File.\nHello Again File.\n";
     for(int i = 0; i < num_bytes_read; ++i)
@@ -124,7 +124,7 @@ test_file_slurp(void)
     Assert(success);
 
     char file_contents[1024] = {0};
-    intptr_t str_sz = coy_file_slurp(path_buf, sizeof(file_contents), (unsigned char*)file_contents);
+    size str_sz = coy_file_slurp(path_buf, sizeof(file_contents), file_contents);
     Assert(str_sz > 1);
 
     char const test_str[] =

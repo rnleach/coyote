@@ -13,13 +13,13 @@
  */
 
 static inline CoyMemoryBlock 
-coy_memory_allocate(intptr_t minimum_num_bytes)
+coy_memory_allocate(size minimum_num_bytes)
 {
     Assert(minimum_num_bytes > 0);
 
     long page_size = sysconf(_SC_PAGESIZE);
     StopIf(page_size == -1, goto ERR_RETURN);
-    size_t nbytes = minimum_num_bytes + page_size - (minimum_num_bytes % page_size);
+    usize nbytes = minimum_num_bytes + page_size - (minimum_num_bytes % page_size);
 
     void *ptr = mmap(NULL,                     // the starting address, NULL = don't care
                      nbytes,                   // the amount of memory to allocate
