@@ -9,13 +9,7 @@ static void
 test_terminal_size(void)
 {
     CoyTerminalSize ts = coy_get_terminal_size();
-    printf("columns = %d rows = %d\n", ts.columns, ts.rows);
     Assert(ts.columns > 0 && ts.rows > 0);
-    for(i32 i = 0; i < ts.columns; ++i)
-    {
-        putchar('=');
-    }
-    putchar('\n');
 }
 
 /*---------------------------------------------------------------------------------------------------------------------------
