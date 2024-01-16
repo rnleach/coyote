@@ -16,6 +16,7 @@ void coyote_time_tests(void);
 void coyote_file_tests(void);
 void coyote_file_name_iterator_tests(void);
 void coyote_memory_tests(void);
+void coyote_terminal_tests(void);
 
 #if defined(_WIN32) || defined(_WIN64)
 static char const *test_data_dir = "tmp_output";

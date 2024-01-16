@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -275,6 +276,19 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     /*int rc = */ closedir(d);
     *cfin = (CoyFileNameIter){0};
     return;
+}
+
+static inline CoyTerminalSize 
+coy_get_terminal_size(void)
+{
+    struct winsize w = {0};
+    int ret_val = ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    if(ret_val == 0) 
+    { 
+        return (CoyTerminalSize){ .columns = w.ws_col, .rows = w.ws_row }; 
+    }
+
+    return (CoyTerminalSize){ .columns = -1, .rows = -1 };
 }
 
 static inline CoyThread

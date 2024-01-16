@@ -25,6 +25,7 @@ Goals & Non-goals:
 
 ### Version 1.1.0 - IN PROGRESS
   - (XXXX-XX-XX)
+  - Add function to get terminal size.
   - Succint typedefs for native types.
   - Added very basic thread & mutex features.
   - Bug fix for file iterator.

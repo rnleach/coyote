@@ -371,6 +371,24 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     return;
 }
 
+static inline CoyTerminalSize 
+coy_get_terminal_size(void)
+{
+    CONSOLE_SCREEN_BUFFER_INFO csbi = {0};
+    BOOL success = GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+
+    if(success)
+    {
+        return (CoyTerminalSize) 
+            {
+                .columns = csbi.srWindow.Right - csbi.srWindow.Left + 1, 
+                .rows =csbi.srWindow.Bottom - csbi.srWindow.Top + 1
+            };
+    }
+
+    return (CoyTerminalSize) { .columns = -1, .rows = -1 };
+}
+
 static inline CoyMemoryBlock 
 coy_memory_allocate(size minimum_num_bytes)
 {

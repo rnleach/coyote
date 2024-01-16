@@ -161,6 +161,17 @@ static inline char const *coy_file_name_iterator_next(CoyFileNameIter *cfni);
 static inline void coy_file_name_iterator_close(CoyFileNameIter *cfin); // should leave the argument zeroed. NOT THREADSAFE.
 
 /*---------------------------------------------------------------------------------------------------------------------------
+ *                                                     Terminal Info
+ *-------------------------------------------------------------------------------------------------------------------------*/
+typedef struct
+{
+    i32 columns;
+    i32 rows;
+} CoyTerminalSize;
+
+static inline CoyTerminalSize coy_get_terminal_size(void);
+
+/*---------------------------------------------------------------------------------------------------------------------------
  *                                                         Memory
  *---------------------------------------------------------------------------------------------------------------------------
  * Request big chunks of memory from the OS, bypassing the CRT. The system may round up your requested memory size, but it
