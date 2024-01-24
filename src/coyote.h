@@ -908,7 +908,7 @@ typedef struct
 static CoyOsMetrics coy_global_os_metrics;
 
 /* NOTE: force the __COUNTER__ to start at 1, so I can offset and NOT use position 0 of global_profiler.blocks array */
-static i64 dummy =  __COUNTER__; 
+i64 dummy =  __COUNTER__; 
 
 static inline u64 coy_profile_get_os_timer_freq(void);
 static inline u64 coy_profile_read_os_timer(void);

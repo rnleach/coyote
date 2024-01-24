@@ -319,7 +319,7 @@ coy_thread_join(CoyThread *thread)
 }
 
 static inline void 
-coy_destroy_thread(CoyThread *thread)
+coy_thread_destroy(CoyThread *thread)
 {
     thread->valid = false;
 }
