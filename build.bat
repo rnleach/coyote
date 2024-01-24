@@ -35,7 +35,6 @@ rem
 @echo "Clean"
 del *.exe *.obj *.pdb *.ilk 
 del build\*.exe build\*.obj build\*.pdb build\*.ilk build\*.h
-del tests\*.exe tests\*.obj tests\*.pdb tests\*.ilk
 GOTO EndSuccess
 
 rem
@@ -55,9 +54,7 @@ rem
 rem Test
 rem
 :Test
-cd tests
 test.exe
-cd ..
 
 
 rem
