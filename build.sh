@@ -11,7 +11,7 @@ LDLIBS="-lm -lpthread"
 if [ "$#" -gt 0 -a "$1" = "debug" ]
 then
     echo "debug build"
-    CFLAGS="$CFLAGS -O0 -g -fkeep-inline-functions"
+    CFLAGS="$CFLAGS -O0 -g"
 elif [ "$#" -gt 0 -a "$1" != "clean" -o \( "$#" = 0 \) ]
 then
     echo "release build"
