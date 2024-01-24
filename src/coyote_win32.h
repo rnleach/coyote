@@ -4,7 +4,9 @@
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Windows Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
-#include <x86intrin.h>
+#include <bcrypt.h>
+#include <intrin.h>
+#include <psapi.h>
 
 _Static_assert(UINT32_MAX < INTPTR_MAX, "DWORD cannot be cast to intptr_t safely.");
 

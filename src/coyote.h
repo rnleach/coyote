@@ -961,6 +961,8 @@ coy_profile_end(void)
     gp->tsc_elapsed_exclusive += total_elapsed;
 
     u64 freq = coy_profile_estimate_cpu_timer_freq();
+    f64 const ZERO = 0.0;
+    f64 const A_NAN = 0.0 / ZERO;
     if(freq)
     {
         coy_global_profiler.total_elapsed = (double)total_elapsed / (double)freq;
@@ -968,8 +970,8 @@ coy_profile_end(void)
     }
     else
     {
-        coy_global_profiler.total_elapsed = 1.0 / 0.0; /* NAN */
-        coy_global_profiler.freq = 1.0 / 0.0;        /* NAN */
+        coy_global_profiler.total_elapsed = A_NAN;
+        coy_global_profiler.freq = A_NAN;
     }
 
     for(i32 i = 0; i < COY_ARRAY_SIZE(coy_global_profiler.blocks); ++i)
@@ -986,14 +988,14 @@ coy_profile_end(void)
             }
             else
             {
-                block->gibibytes_per_second = 1.0 / 0.0;
+                block->gibibytes_per_second = A_NAN;
             }
         }
         else
         {
-            block->exclusive_pct = 1.0 / 0.0;
-            block->inclusive_pct = 1.0 / 0.0;
-            block->gibibytes_per_second = 1.0 / 0.0;
+            block->exclusive_pct = A_NAN;
+            block->inclusive_pct = A_NAN;
+            block->gibibytes_per_second = A_NAN;
         }
     }
 }
