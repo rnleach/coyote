@@ -1,11 +1,9 @@
 #ifndef _COYOTE_WIN32_H_
 #define _COYOTE_WIN32_H_
 
-#pragma warning(disable: 4142)
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Windows Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
-#include <windows.h>
 
 _Static_assert(UINT32_MAX < INTPTR_MAX, "DWORD cannot be cast to intptr_t safely.");
 
@@ -485,7 +483,7 @@ static inline CoyMutex
 coy_mutex_create()
 {
     CoyMutex mutex = {0};
-    mutex.valid = InitializeCriticalSectionAndSpinCount(&mutex, 0x400) != 0;
+    mutex.valid = InitializeCriticalSectionAndSpinCount(&mutex.mutex, 0x400) != 0;
     return mutex;
 }
 
@@ -506,8 +504,8 @@ coy_mutex_unlock(CoyMutex *mutex)
 static inline void 
 coy_mutex_destroy(CoyMutex *mutex)
 {
-    DeleteCriticalSections(&mutex->mutex);
-    mutex->valid == false;
+    DeleteCriticalSection(&mutex->mutex);
+    mutex->valid = false;
 }
 
 static inline CoyCondVar 
@@ -545,5 +543,4 @@ coy_condvar_destroy(CoyCondVar *cv)
     cv->valid = false;
 }
 
-#pragma warning(default: 4142)
 #endif

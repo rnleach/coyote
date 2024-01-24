@@ -203,9 +203,13 @@ test_multiple_producer_multiple_consumer(void)
 void
 coyote_threads_tests(void)
 {
+    printf(".spsc..");
     test_single_producer_single_consumer();
+    printf(".spmc..");
     test_single_producer_multiple_consumer();
+    printf(".mpsc..");
     test_multiple_producer_single_consumer();
+    printf(".mpmc..");
     test_multiple_producer_multiple_consumer();
 }
 

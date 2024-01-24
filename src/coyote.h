@@ -4,6 +4,19 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#if defined(_WIN32) || defined(_WIN64)
+
+#include <windows.h>
+#pragma warning(disable: 4142)
+
+#elif defined(__linux__) || defined(__APPLE__)
+
+#include <pthread.h>
+
+#else
+#error "Platform not supported by Coyote Library"
+#endif
+
 /*---------------------------------------------------------------------------------------------------------------------------
  * Define simpler types.
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -232,11 +245,10 @@ typedef struct
 typedef struct
 {
     CONDITION_VARIABLE cond_var;
-    bool.valid;
+    bool valid;
 } CoyCondVar;
 
 #elif defined(__linux__) || defined(__APPLE__)
-#include <pthread.h>
 
 typedef void* CoyThreadFunReturnType;
 
@@ -260,8 +272,6 @@ typedef struct
     bool valid;
 } CoyCondVar;
 
-#else
-#error "Platform not supported by Coyote Library"
 #endif
 
 typedef CoyThreadFunReturnType (*CoyThreadFunc)(void *thread_data);
@@ -804,17 +814,26 @@ coy_channel_receive(CoyChannel *chan, void **out)
 }
 
 #if defined(_WIN32) || defined(_WIN64)
+
 #include "coyote_win32.h"
+#pragma warning(default: 4142)
+
 #elif defined(__linux__)
+
 #include "coyote_linux.h"
+
 #elif defined(__APPLE__)
+
 #include "coyote_apple_osx.h"
+
 #else
 #error "Platform not supported by Coyote Library"
 #endif
 
 #if defined(__linux__) || defined(__APPLE__)
+
 #include "coyote_linux_apple_common.h"
+
 #endif
 
 #endif
