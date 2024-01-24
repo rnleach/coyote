@@ -337,17 +337,54 @@ coy_mutex_create()
 static inline bool 
 coy_mutex_lock(CoyMutex *mutex)
 {
-    int status = pthread_mutex_lock(&mutex->mutex);
-    if(status == 0) { return true; }
-    return false;
+    return pthread_mutex_lock(&mutex->mutex) == 0;
 }
 
 static inline bool 
 coy_mutex_unlock(CoyMutex *mutex)
 {
-    int status = pthread_mutex_unlock(&mutex->mutex);
-    if(status == 0) { return true; }
-    return false;
+    return pthread_mutex_unlock(&mutex->mutex) == 0;
+}
+
+static inline void 
+coy_mutex_destroy(CoyMutex *mutex)
+{
+    pthread_mutex_destroy(&mutex->mutex);
+    mutex->valid = false;
+}
+
+static inline CoyCondVar 
+coy_condvar_create(void)
+{
+    CoyCondVar cv = {0};
+    cv.valid = pthread_cond_init(&cv.cond_var, NULL) == 0;
+    return cv;
+}
+
+static inline bool 
+coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx)
+{
+    return 0 == pthread_cond_wait(&cv->cond_var, &mtx->mutex);
+}
+
+static inline bool 
+coy_condvar_wake(CoyCondVar *cv)
+{
+    return 0 == pthread_cond_signal(&cv->cond_var);
+}
+
+static inline bool 
+coy_condvar_wake_all(CoyCondVar *cv)
+{
+    return 0 == pthread_cond_broadcast(&cv->cond_var);
+}
+
+static inline void 
+coy_condvar_destroy(CoyCondVar *cv)
+{
+    int status = pthread_cond_destroy(&cv->cond_var);
+    Assert(status == 0);
+    cv->valid = false;
 }
 
 #endif

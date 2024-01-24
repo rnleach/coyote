@@ -484,38 +484,65 @@ coy_thread_destroy(CoyThread *thread)
 static inline CoyMutex 
 coy_mutex_create()
 {
-    HANDLE h = CreateMutexA(
-      NULL,  //[in, optional] LPSECURITY_ATTRIBUTES lpMutexAttributes,
-      FALSE, // [in]           BOOL                  bInitialOwner,
-      NULL   // [in, optional] LPCSTR                lpName
-    );
-
-    if(h == NULL) { return (CoyMutex){ .valid = false }; }
-    
-    return (CoyMutex){ .mutex = h, .valid = true };
+    CoyMutex mutex = {0};
+    mutex.valid = InitializeCriticalSectionAndSpinCount(&mutex, 0x400) != 0;
+    return mutex;
 }
 
 static inline bool 
 coy_mutex_lock(CoyMutex *mutex)
 {
-    DWORD status =  WaitForSingleObject(
-      mutex->mutex, // [in] HANDLE hHandle,
-      INFINITE      // [in] DWORD  dwMilliseconds
-    );
-
-    if(status == WAIT_OBJECT_0) { return true; }
-    
-    return false;
+    EnterCriticalSection(&mutex->mutex);
+    return true;
 }
 
 static inline bool 
 coy_mutex_unlock(CoyMutex *mutex)
 {
-    BOOL status = ReleaseMutex(
-      mutex->mutex  // [in] HANDLE hMutex
-    );
-    
-    return status;
+    LeaveCriticalSection(&mutex->mutex);
+    return true;
+}
+
+static inline void 
+coy_mutex_destroy(CoyMutex *mutex)
+{
+    DeleteCriticalSections(&mutex->mutex);
+    mutex->valid == false;
+}
+
+static inline CoyCondVar 
+coy_condvar_create(void)
+{
+    CoyCondVar cv = {0};
+    InitializeConditionVariable(&cv.cond_var);
+    cv.valid = true;
+    return cv;
+}
+
+static inline bool 
+coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx)
+{
+    return 0 != SleepConditionVariableCS(&cv->cond_var, &mtx->mutex, INFINITE);
+}
+
+static inline bool 
+coy_condvar_wake(CoyCondVar *cv)
+{
+    WakeConditionVariable(&cv->cond_var);
+    return true;
+}
+
+static inline bool 
+coy_condvar_wake_all(CoyCondVar *cv)
+{
+    WakeAllConditionVariable(&cv->cond_var);
+    return true;
+}
+
+static inline void 
+coy_condvar_destroy(CoyCondVar *cv)
+{
+    cv->valid = false;
 }
 
 #pragma warning(default: 4142)

@@ -28,6 +28,7 @@ Goals & Non-goals:
   - Add function to get terminal size.
   - Succint typedefs for native types.
   - Added very basic thread & mutex features.
+  - Added multiple producer multiple consumer threadsafe channel for pointers.
   - Bug fix for file iterator.
   - Add more convenience functions for file IO.
   - Create a build program to combine the files into a single header instead of relying on includes.

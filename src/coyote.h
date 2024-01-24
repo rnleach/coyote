@@ -221,10 +221,19 @@ typedef struct
 
 typedef struct 
 {
-    /* Win32 HANDLE = void * */
-    void *mutex;
+    /* Win32 API calls them critical sections. It also has something called mutex, but it works for interprocess 
+     * synchronization as well, and so it is slower. Within a single process, critical sections are a faster way to
+     * do synchronization.
+     */
+    CRITICAL_SECTION mutex;
     bool valid;
 } CoyMutex;
+
+typedef struct
+{
+    CONDITION_VARIABLE cond_var;
+    bool.valid;
+} CoyCondVar;
 
 #elif defined(__linux__) || defined(__APPLE__)
 #include <pthread.h>
@@ -244,6 +253,13 @@ typedef struct
     bool valid;
 } CoyMutex;
 
+
+typedef struct
+{
+    pthread_cond_t cond_var;
+    bool valid;
+} CoyCondVar;
+
 #else
 #error "Platform not supported by Coyote Library"
 #endif
@@ -255,9 +271,46 @@ static inline bool coy_thread_join(CoyThread *thread); /* Returns false if there
 static inline void coy_thread_destroy(CoyThread *thread);
 #define coy_thread_get_result(thread) (thread).ret_val
 
-static inline CoyMutex coy_mutex_create();
-static inline bool coy_mutex_lock(CoyMutex *mutex);   /* Block, return false on failure. */
-static inline bool coy_mutex_unlock(CoyMutex *mutex); /* Return false on failure. */
+static inline CoyMutex coy_mutex_create(void);
+static inline bool coy_mutex_lock(CoyMutex *mutex);    /* Block, return false on failure. */
+static inline bool coy_mutex_unlock(CoyMutex *mutex);  /* Return false on failure.        */
+static inline void coy_mutex_destroy(CoyMutex *mutex); /* Must set valid member to false. */
+
+static inline CoyCondVar coy_condvar_create(void);
+static inline bool coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx);
+static inline bool coy_condvar_wake(CoyCondVar *cv);
+static inline bool coy_condvar_wake_all(CoyCondVar *cv);
+static inline void coy_condvar_destroy(CoyCondVar *cv); /* Must set valid member to false. */
+
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                                  Thread Safe Channel
+ *---------------------------------------------------------------------------------------------------------------------------
+ * Threadsafe channel for sending / receiving pointers. Multiple Producer / Multiple Consumer (mpmc)
+ */
+#define COYOTE_CHANNEL_SIZE 16
+typedef struct
+{
+    size head;
+    size tail;
+    size count;
+    CoyMutex mtx;
+    CoyCondVar space_available;
+    CoyCondVar data_available;
+    i32 num_producers;
+    i32 num_consumers;
+    void *buf[COYOTE_CHANNEL_SIZE];
+} CoyChannel;
+
+static inline CoyChannel coy_channel_create(void);
+static inline void coy_channel_destroy(CoyChannel *chan, void(*free_func)(void *ptr, void *ctx), void *free_ctx);
+static inline void coy_channel_wait_until_ready_to_receive(CoyChannel *chan);
+static inline void coy_channel_wait_until_ready_to_send(CoyChannel *chan);
+static inline void coy_channel_register_sender(CoyChannel *chan);
+static inline void coy_channel_register_receiver(CoyChannel *chan);
+static inline void coy_channel_done_sending(CoyChannel *chan);
+static inline void coy_channel_done_receiving(CoyChannel *chan);
+static inline bool coy_channel_send(CoyChannel *chan, void *data);
+static inline bool coy_channel_receive(CoyChannel *chan, void **out);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *
@@ -504,6 +557,249 @@ coy_file_read_str(CoyFile *file, size *len, char *str)
     }
 
     *len = str_len;
+    return true;
+}
+
+static inline CoyChannel 
+coy_channel_create(void)
+{
+    CoyChannel chan = 
+        {
+            .head = 0,
+            .tail = 0,
+            .count = 0,
+            .mtx = coy_mutex_create(),
+            .space_available = coy_condvar_create(),
+            .data_available = coy_condvar_create(),
+            .num_producers = 0,
+            .num_consumers = 0,
+            .buf = {0},
+        };
+
+    Assert(chan.mtx.valid);
+    Assert(chan.space_available.valid);
+    Assert(chan.data_available.valid);
+
+    return chan;
+}
+
+static inline void 
+coy_channel_destroy(CoyChannel *chan, void(*free_func)(void *ptr, void *ctx), void *free_ctx)
+{
+    Assert(chan->num_producers == 0);
+    Assert(chan->num_consumers == 0);
+    if(free_func)
+    {
+        while(chan->count > 0)
+        {
+            free_func(chan->buf[chan->head % COYOTE_CHANNEL_SIZE], free_ctx);
+            chan->head += 1;
+            chan->count -= 1;
+        }
+
+        Assert(chan->head == chan->tail && chan->count == 0);
+    }
+
+    coy_mutex_destroy(&chan->mtx);
+    coy_condvar_destroy(&chan->space_available);
+    coy_condvar_destroy(&chan->data_available);
+    *chan = (CoyChannel){0};
+}
+
+static inline void 
+coy_channel_wait_until_ready_to_receive(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    while(chan->num_producers == 0 && chan->count == 0) { coy_condvar_sleep(&chan->data_available, &chan->mtx); }
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
+coy_channel_wait_until_ready_to_send(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    while(chan->num_consumers == 0) { coy_condvar_sleep(&chan->space_available, &chan->mtx); }
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
+coy_channel_register_sender(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    chan->num_producers += 1;
+
+    if(chan->num_producers == 1)
+    {
+        /* Broadcast here so any threads blocked on coy_channel_wait_until_ready_to_receive can progress. If the number of
+         * producers is greater than 1, then this was already sent.
+         */
+        success = coy_condvar_wake_all(&chan->data_available);
+        Assert(success);
+    }
+
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
+coy_channel_register_receiver(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+
+    chan->num_consumers += 1;
+
+    if(chan->num_consumers == 1)
+    {
+        /* Broadcast here so any threads blocked on coy_channel_wait_until_ready_to_send can progress. If the number of
+         * consumers is greater than 1, then this was already sent.
+         */
+        success = coy_condvar_wake_all(&chan->space_available);
+        Assert(success);
+    }
+
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
+coy_channel_done_sending(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    Assert(chan->num_producers > 0);
+
+    chan->num_producers -= 1;
+
+    if(chan->num_producers == 0)
+    {
+        /* Broadcast in case any thread is waiting for data to become available that won't because there are no more
+         * producers. This will let them check the number of producers and realize nothing is coming so they too can quit.
+         */
+        success = coy_condvar_wake_all(&chan->data_available);
+        Assert(success);
+    }
+    else
+    {
+        /* Deadlock may occur if I don't do this. This thread got signaled when others should have. */
+        success = coy_condvar_wake_all(&chan->space_available);
+        Assert(success);
+    }
+
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
+coy_channel_done_receiving(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    Assert(chan->num_consumers > 0);
+
+    chan->num_consumers -= 1;
+
+    if(chan->num_consumers == 0)
+    {
+        /* Broadcast in case any thread is waiting to send data that they will never be able to send because there are no
+         * consumers to receive it! This will let them check the number of consumers and realize space will never become
+         * available.
+         */
+        success = coy_condvar_wake_all(&chan->space_available);
+        Assert(success);
+    }
+    else
+    {
+        /* Deadlock may occur if I don't do this. This thread got signaled when others should have. */
+        success = coy_condvar_wake_all(&chan->data_available);
+        Assert(success);
+    }
+
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline bool 
+coy_channel_send(CoyChannel *chan, void *data)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    Assert(chan->num_producers > 0);
+
+    while(chan->count == COYOTE_CHANNEL_SIZE && chan->num_consumers > 0)
+    {
+        success = coy_condvar_sleep(&chan->space_available, &chan->mtx);
+        Assert(success);
+    }
+
+    if(chan->num_consumers > 0)
+    {
+        chan->buf[(chan->tail) % COYOTE_CHANNEL_SIZE] = data;
+        chan->tail += 1;
+        chan->count += 1;
+
+        /* If the count was increased to , then someone may have been waiting to be notified! */
+        if(chan->count == 1)
+        {
+            success = coy_condvar_wake(&chan->data_available);
+            Assert(success);
+        }
+
+        success = coy_mutex_unlock(&chan->mtx);
+        Assert(success);
+        return true;
+    }
+    else
+    {
+        /* Space will never become available. */
+        success = coy_mutex_unlock(&chan->mtx);
+        Assert(success);
+        return false;
+    }
+}
+
+static inline bool 
+coy_channel_receive(CoyChannel *chan, void **out)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+
+    while(chan->count == 0 && chan->num_producers > 0)
+    {
+        success = coy_condvar_sleep(&chan->data_available, &chan->mtx);
+        Assert(success);
+    }
+
+    *out = NULL;
+    if(chan->count > 0)
+    {
+        *out = chan->buf[(chan->head) % COYOTE_CHANNEL_SIZE];
+        chan->head += 1;
+        chan->count -= 1;
+    }
+    else
+    {
+        /* Nothing more is coming, to get here num_producers must be 0. */
+        success = coy_mutex_unlock(&chan->mtx);
+        Assert(success);
+        return false;
+    }
+
+    /* If the queue was full before, send a signal to let other's know there is room now. */
+    if( chan->count + 1 == COYOTE_CHANNEL_SIZE)
+    {
+        success = coy_condvar_wake(&chan->space_available);
+        Assert(success);
+    }
+    
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+
     return true;
 }
 

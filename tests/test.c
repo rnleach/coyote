@@ -16,6 +16,7 @@ main(int argc, char *argv[])
     coyote_file_name_iterator_tests();
     coyote_memory_tests();
     coyote_terminal_tests();
+    coyote_threads_tests();
 
     printf("\n\n*** Tests completed successfully. ***\n\n");
     return EXIT_SUCCESS;

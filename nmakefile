@@ -26,7 +26,8 @@ TEST_OBJS = tests\test.obj                 \
             tests\fileio.obj               \
             tests\file_name_iterator.obj   \
             tests\memory.obj               \
-			tests/terminal.obj
+			tests\terminal.obj             \
+			tests\threads.obj
 
 all: build test.exe test
 
