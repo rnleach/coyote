@@ -4,6 +4,7 @@
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                 Windows Implementation
  *-------------------------------------------------------------------------------------------------------------------------*/
+#include <x86intrin.h>
 
 _Static_assert(UINT32_MAX < INTPTR_MAX, "DWORD cannot be cast to intptr_t safely.");
 
@@ -541,6 +542,53 @@ static inline void
 coy_condvar_destroy(CoyCondVar *cv)
 {
     cv->valid = false;
+}
+
+static inline u64
+coy_profile_read_cpu_timer(void)
+{
+	return __rdtsc();
+}
+
+static inline void 
+coy_profile_initialize_os_metrics(void)
+{
+    if(!coy_global_os_metrics.initialized)
+    {
+        coy_global_os_metrics.proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, GetCurrentProcessId());
+        coy_global_os_metrics.initialized = true;
+    }
+}
+
+static inline void 
+coy_profile_finalize_os_metrics(void)
+{
+    /* no op on win 32 */
+}
+
+static inline u64
+coy_profile_read_os_page_fault_count(void)
+{
+    PROCESS_MEMORY_COUNTERS_EX memory_counters = { .cb = sizeof(memory_counters) };
+    GetProcessMemoryInfo(coy_global_os_metrics.proc, (PROCESS_MEMORY_COUNTERS *)&memory_counters, sizeof(memory_counters));
+
+    return memory_counters.PageFaultCount;
+}
+
+static inline u64 
+coy_profile_get_os_timer_freq(void)
+{
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    return freq.QuadPart;
+}
+
+static inline u64 
+coy_profile_read_os_timer(void)
+{
+    LARGE_INTEGER value;
+    QueryPerformanceCounter(&value);
+    return value.QuadPart;
 }
 
 #endif

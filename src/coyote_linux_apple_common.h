@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <x86intrin.h>
 
 static inline u64
 coy_time_now(void)
@@ -385,6 +386,28 @@ coy_condvar_destroy(CoyCondVar *cv)
     int status = pthread_cond_destroy(&cv->cond_var);
     Assert(status == 0);
     cv->valid = false;
+}
+
+static inline u64
+coy_profile_read_cpu_timer(void)
+{
+	return __rdtsc();
+}
+
+static inline u64 
+coy_profile_get_os_timer_freq(void)
+{
+	return 1000000;
+}
+
+static inline u64 
+coy_profile_read_os_timer(void)
+{
+	struct timeval value;
+	gettimeofday(&value, 0);
+	
+	u64 res = coy_profile_get_os_timer_freq() * (u64)value.tv_sec + (u64)value.tv_usec;
+	return res;
 }
 
 #endif

@@ -7,7 +7,7 @@
 # > nmake /f nmakefile test
 #
 
-CFLAGS = /std:c11 /TC /utf-8 /nologo
+CFLAGS = /std:c11 /TC /utf-8 /nologo /DCOY_PROFILE
 LDFLAGS = /NOLOGO
 
 !IF "$(DEBUG)" == "1"

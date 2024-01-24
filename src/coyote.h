@@ -51,6 +51,8 @@ typedef int32_t     i32;
 typedef int64_t     i64;
 #endif
 
+#define COY_ARRAY_SIZE(A) (sizeof(A) / sizeof(A[0]))
+
 /*---------------------------------------------------------------------------------------------------------------------------
  * Declare parts of the standard C library I use. These should almost always be implemented as compiler intrinsics anyway.
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -322,6 +324,86 @@ static inline void coy_channel_done_receiving(CoyChannel *chan);
 static inline bool coy_channel_send(CoyChannel *chan, void *data);
 static inline bool coy_channel_receive(CoyChannel *chan, void **out);
 
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                                    Profiling Tools
+ *---------------------------------------------------------------------------------------------------------------------------
+ * Macro enabled tools for profiling code.
+ */
+
+#ifndef COY_PROFILE
+#define COY_PROFILE 0
+#endif
+
+#if COY_PROFILE
+#define COY_PROFILE_NUM_BLOCKS 64
+#else
+#define COY_PROFILE_NUM_BLOCKS 1
+#endif
+
+typedef struct
+{
+    u64 tsc_elapsed_inclusive;
+    u64 tsc_elapsed_exclusive;
+
+    u64 hit_count;
+    i32 ref_count;
+
+    u64 bytes;
+
+    char const *label;
+
+    double exclusive_pct;
+    double inclusive_pct;
+    double gibibytes_per_second;
+} CoyBlockProfiler;
+
+#if COY_PROFILE
+typedef struct
+{
+    u64 start;
+    u64 old_tsc_elapsed_inclusive;
+    i32 index;
+    i32 parent_index;
+} CoyProfileAnchor;
+#else
+typedef u32 CoyProfileAnchor;
+#endif
+
+typedef struct
+{
+    CoyBlockProfiler blocks[COY_PROFILE_NUM_BLOCKS];
+    i32 current_block;
+
+    u64 start;
+
+    double total_elapsed;
+    u64 freq;
+} GlobalProfiler;
+
+static GlobalProfiler coy_global_profiler;
+
+/* CPU & timing */
+static inline void coy_profile_begin(void);
+static inline void coy_profile_end(void);
+static inline u64 coy_profile_read_cpu_timer(void);
+static inline u64 coy_profile_estimate_cpu_timer_freq(void);
+
+/* OS Counters (page faults, etc.) */
+static inline void coy_profile_initialize_os_metrics(void);
+static inline void coy_profile_finalize_os_metrics(void);
+static inline u64 coy_profile_read_os_page_fault_count(void);
+
+#define COY_START_PROFILE_FUNCTION_BYTES(bytes) coy_profile_start_block(__func__, __COUNTER__, bytes)
+#define COY_START_PROFILE_FUNCTION coy_profile_start_block(__func__, __COUNTER__, 0)
+#define COY_START_PROFILE_BLOCK_BYTES(name, bytes) coy_profile_start_block(name, __COUNTER__, bytes)
+#define COY_START_PROFILE_BLOCK(name) coy_profile_start_block(name, __COUNTER__, 0)
+#define COY_END_PROFILE(ap) coy_profile_end_block(&ap)
+
+#if COY_PROFILE
+#define COY_PROFILE_STATIC_CHECK _Static_assert(__COUNTER__ <= ARRAY_SIZE(coy_global_profiler.blocks), "not enough profiler blocks")
+#else
+#define COY_PROFILE_STATIC_CHECK
+#endif
 /*---------------------------------------------------------------------------------------------------------------------------
  *
  *
@@ -812,6 +894,162 @@ coy_channel_receive(CoyChannel *chan, void **out)
 
     return true;
 }
+
+typedef struct
+{
+    bool initialized;
+#if defined(_WIN64)
+    HANDLE proc;
+#else
+    int perf_fd;
+#endif
+} CoyOsMetrics;
+
+static CoyOsMetrics coy_global_os_metrics;
+
+/* NOTE: force the __COUNTER__ to start at 1, so I can offset and NOT use position 0 of global_profiler.blocks array */
+static i64 dummy =  __COUNTER__; 
+
+static inline u64 coy_profile_get_os_timer_freq(void);
+static inline u64 coy_profile_read_os_timer(void);
+
+static inline u64
+coy_profile_estimate_cpu_timer_freq(void)
+{
+	u64 milliseconds_to_wait = 100;
+	u64 os_freq = coy_profile_get_os_timer_freq();
+
+	u64 cpu_start = coy_profile_read_cpu_timer();
+	u64 os_start = coy_profile_read_os_timer();
+	u64 os_end = 0;
+	u64 os_elapsed = 0;
+	u64 os_wait_time = os_freq * milliseconds_to_wait / 1000;
+	while(os_elapsed < os_wait_time)
+	{
+		os_end = coy_profile_read_os_timer();
+		os_elapsed = os_end - os_start;
+	}
+	
+	u64 cpu_end = coy_profile_read_cpu_timer();
+	u64 cpu_elapsed = cpu_end - cpu_start;
+	
+	u64 cpu_freq = 0;
+	if(os_elapsed)
+	{
+		cpu_freq = os_freq * cpu_elapsed / os_elapsed;
+	}
+	
+	return cpu_freq;
+}
+
+static inline void
+coy_profile_begin(void)
+{
+    coy_global_profiler.start = coy_profile_read_cpu_timer();
+    coy_global_profiler.blocks[0].label = "Global";
+    coy_global_profiler.blocks[0].hit_count++;
+}
+
+static inline void
+coy_profile_end(void)
+{
+    u64 end = coy_profile_read_cpu_timer();
+    u64 total_elapsed = end - coy_global_profiler.start;
+
+    CoyBlockProfiler *gp = coy_global_profiler.blocks;
+    gp->tsc_elapsed_inclusive = total_elapsed;
+    gp->tsc_elapsed_exclusive += total_elapsed;
+
+    u64 freq = coy_profile_estimate_cpu_timer_freq();
+    if(freq)
+    {
+        coy_global_profiler.total_elapsed = (double)total_elapsed / (double)freq;
+        coy_global_profiler.freq = freq;
+    }
+    else
+    {
+        coy_global_profiler.total_elapsed = 1.0 / 0.0; /* NAN */
+        coy_global_profiler.freq = 1.0 / 0.0;        /* NAN */
+    }
+
+    for(i32 i = 0; i < COY_ARRAY_SIZE(coy_global_profiler.blocks); ++i)
+    {
+        CoyBlockProfiler *block = coy_global_profiler.blocks + i;
+        if(block->tsc_elapsed_inclusive)
+        {
+            block->exclusive_pct = (double)block->tsc_elapsed_exclusive / (double) total_elapsed * 100.0;
+            block->inclusive_pct = (double)block->tsc_elapsed_inclusive / (double) total_elapsed * 100.0;
+            if(block->bytes && freq)
+            {
+                double gib = (double)block->bytes / (1024 * 1024 * 1024);
+                block->gibibytes_per_second = gib * (double) freq / (double)block->tsc_elapsed_inclusive;
+            }
+            else
+            {
+                block->gibibytes_per_second = 1.0 / 0.0;
+            }
+        }
+        else
+        {
+            block->exclusive_pct = 1.0 / 0.0;
+            block->inclusive_pct = 1.0 / 0.0;
+            block->gibibytes_per_second = 1.0 / 0.0;
+        }
+    }
+}
+
+static inline CoyProfileAnchor 
+coy_profile_start_block(char const *label, i32 index, u64 bytes_processed)
+{
+#if COY_PROFILE
+    /* Update global state */
+    i32 parent_index = coy_global_profiler.current_block;
+    coy_global_profiler.current_block = index;
+
+    /* update block profiler for this block */
+    CoyBlockProfiler *block = coy_global_profiler.blocks + index;
+    block->hit_count++;
+    block->ref_count++;
+    block->bytes += bytes_processed;
+    block->label = label; /* gotta do it every time */
+
+    /* build anchor to track this block */
+    u64 start = coy_profile_read_cpu_timer();
+    return (CoyProfileAnchor)
+        { 
+            .index = index, 
+            .parent_index = parent_index, 
+            .start=start, 
+            .old_tsc_elapsed_inclusive = block->tsc_elapsed_inclusive 
+        };
+#else
+    return -1;
+#endif
+}
+
+static inline void 
+coy_profile_end_block(CoyProfileAnchor *anchor)
+{
+#if COY_PROFILE
+    /* read the end time, hopefully before the rest of this stuff */
+    u64 end = coy_profile_read_cpu_timer();
+    u64 elapsed = end - anchor->start;
+
+    /* update global state */
+    coy_global_profiler.current_block = anchor->parent_index;
+
+    /* update the parent block profilers state */
+    CoyBlockProfiler *parent = coy_global_profiler.blocks + anchor->parent_index;
+    parent->tsc_elapsed_exclusive -= elapsed;
+
+    /* update block profiler state */
+    CoyBlockProfiler *block = coy_global_profiler.blocks + anchor->index;
+    block->tsc_elapsed_exclusive += elapsed;
+    block->tsc_elapsed_inclusive = anchor->old_tsc_elapsed_inclusive + elapsed;
+    block->ref_count--;
+#endif
+}
+
 
 #if defined(_WIN32) || defined(_WIN64)
 
