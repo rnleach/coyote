@@ -9,9 +9,11 @@
 #include <pthread.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <x86intrin.h>
+#include <unistd.h>
 
 static inline u64
 coy_time_now(void)

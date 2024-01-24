@@ -53,7 +53,9 @@ main(int argc, char *argv[])
     coy_profile_end();
 
 #if COY_PROFILE
-    printf("Total Runtime = %.3lf seconds at a frequency of %ld\n", coy_global_profiler.total_elapsed, coy_global_profiler.freq);
+    printf("Total Runtime = %.3lf seconds at a frequency of %"PRIu64"\n",
+            coy_global_profiler.total_elapsed, coy_global_profiler.freq);
+
     for(i32 i = 1; i < COY_PROFILE_NUM_BLOCKS; ++i)
     {
         CoyBlockProfiler *block = &coy_global_profiler.blocks[i];
