@@ -17,7 +17,7 @@ typedef struct
     u64 num_received;
 } ConsumerThreadData;
 
-static CoyThreadFunReturnType
+static void
 producer(void *data)
 {
     ProducerThreadData *pdata = data;
@@ -34,11 +34,9 @@ producer(void *data)
     }
 
     coy_channel_done_sending(outbound);
-    
-    return (CoyThreadFunReturnType)1;
 }
 
-static CoyThreadFunReturnType
+static void
 consumer(void *data)
 {
     ConsumerThreadData *cdata = data;
@@ -54,54 +52,60 @@ consumer(void *data)
         sum += (u64)val;
     }
 
-    coy_channel_done_receiving(inbound);
     cdata->num_received = sum;
-
-    return (CoyThreadFunReturnType)1;
+    coy_channel_done_receiving(inbound);
 }
 
-#define NUM_TO_SEND 1000000
-
 static void
-test_single_producer_single_consumer(void)
+test_single_producer_single_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
 
-    ProducerThreadData pdata = { .outbound = &chan, .num_to_send = NUM_TO_SEND };
-    CoyThread producer_thread = coy_thread_create(producer, &pdata);
+    ProducerThreadData pdata = { .outbound = &chan, .num_to_send = num_to_send };
+    CoyThread producer_thread = {0};
+    bool success = coy_thread_create(&producer_thread, producer, &pdata);
+    Assert(success);
 
     ConsumerThreadData cdata = { .inbound = &chan, .num_received = 0 };
-    CoyThread consumer_thread = coy_thread_create(consumer, &cdata);
-
-    bool success = coy_thread_join(&producer_thread);
+    CoyThread consumer_thread = {0};
+    success = coy_thread_create(&consumer_thread, consumer, &cdata);
     Assert(success);
+
+    success = coy_thread_join(&producer_thread);
+    Assert(success);
+    coy_channel_finish(&chan);
 
     success = coy_thread_join(&consumer_thread);
     Assert(success);
 
     coy_channel_destroy(&chan, NULL, NULL);
 
-    Assert(cdata.num_received == NUM_TO_SEND);
+    Assert(cdata.num_received == num_to_send);
 }
 
 static void
-test_single_producer_multiple_consumer(void)
+test_single_producer_multiple_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
 
-    ProducerThreadData pdata = { .outbound = &chan, .num_to_send = NUM_TO_SEND };
-    CoyThread producer_thread = coy_thread_create(producer, &pdata);
+    ProducerThreadData pdata = { .outbound = &chan, .num_to_send = num_to_send };
+    CoyThread producer_thread = {0};
+    bool success = coy_thread_create(&producer_thread, producer, &pdata);
+    Assert(success);
 
     ConsumerThreadData cdata[4] = {0};
     CoyThread consumer_threads[4] = {0};
     for(i32 i = 0; i < 4; ++i)
     {
         cdata[i] = (ConsumerThreadData){ .inbound = &chan, .num_received = 0 };
-        consumer_threads[i] = coy_thread_create(consumer, &cdata[i]);
+        success = coy_thread_create(&consumer_threads[i], consumer, &cdata[i]);
+        Assert(success);
     }
 
-    bool success = coy_thread_join(&producer_thread);
+    success = coy_thread_join(&producer_thread);
     Assert(success);
+
+    coy_channel_finish(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
@@ -117,52 +121,58 @@ test_single_producer_multiple_consumer(void)
         total += cdata[i].num_received;
     }
 
-    Assert(total == NUM_TO_SEND);
+    Assert(total == num_to_send);
 }
 
 static void
-test_multiple_producer_single_consumer(void)
+test_multiple_producer_single_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
 
+    bool success = true;
     ProducerThreadData pdata[4] = {0};
     CoyThread producer_threads[4] = {0};
     for(i32 i = 0; i < 4; ++i)
     {
-        pdata[i] = (ProducerThreadData){ .outbound = &chan, .num_to_send = NUM_TO_SEND };
-        producer_threads[i] = coy_thread_create(producer, &pdata[i]);
+        pdata[i] = (ProducerThreadData){ .outbound = &chan, .num_to_send = num_to_send };
+        success = coy_thread_create(&producer_threads[i], producer, &pdata[i]);
+        Assert(success);
     }
 
     ConsumerThreadData cdata = { .inbound = &chan, .num_received = 0 };
-    CoyThread consumer_thread = coy_thread_create(consumer, &cdata);
-    
+    CoyThread consumer_thread = {0};
+    success = coy_thread_create(&consumer_thread, consumer, &cdata);
+    Assert(success);
 
-    bool success = true;
     for(i32 i = 0; i < 4; ++i)
     {
         success = coy_thread_join(&producer_threads[i]);
         Assert(success);
     }
 
+    coy_channel_finish(&chan);
+
     success = coy_thread_join(&consumer_thread);
     Assert(success);
 
     coy_channel_destroy(&chan, NULL, NULL);
 
-    Assert(cdata.num_received == 4 * NUM_TO_SEND);
+    Assert(cdata.num_received == 4 * num_to_send);
 }
 
 static void
-test_multiple_producer_multiple_consumer(void)
+test_multiple_producer_multiple_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
 
+    bool success = true;
     ProducerThreadData pdata[4] = {0};
     CoyThread producer_threads[4] = {0};
     for(i32 i = 0; i < 4; ++i)
     {
-        pdata[i] = (ProducerThreadData){ .outbound = &chan, .num_to_send = NUM_TO_SEND };
-        producer_threads[i] = coy_thread_create(producer, &pdata[i]);
+        pdata[i] = (ProducerThreadData){ .outbound = &chan, .num_to_send = num_to_send };
+        success = coy_thread_create(&producer_threads[i], producer, &pdata[i]);
+        Assert(success);
     }
 
     ConsumerThreadData cdata[4] = {0};
@@ -170,15 +180,17 @@ test_multiple_producer_multiple_consumer(void)
     for(i32 i = 0; i < 4; ++i)
     {
         cdata[i] = (ConsumerThreadData){ .inbound = &chan, .num_received = 0 };
-        consumer_threads[i] = coy_thread_create(consumer, &cdata[i]);
+        success = coy_thread_create(&consumer_threads[i], consumer, &cdata[i]);
+        Assert(success);
     }
 
-    bool success = true;
     for(i32 i = 0; i < 4; ++i)
     {
         success = coy_thread_join(&producer_threads[i]);
         Assert(success);
     }
+
+    coy_channel_finish(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
@@ -194,7 +206,7 @@ test_multiple_producer_multiple_consumer(void)
         total += cdata[i].num_received;
     }
 
-    Assert(total == 4 * NUM_TO_SEND);
+    Assert(total == 4 * num_to_send);
 }
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -204,12 +216,16 @@ void
 coyote_threads_tests(void)
 {
     fprintf(stderr,".spsc..");
-    test_single_producer_single_consumer();
+    test_single_producer_single_consumer(1000000);
+    test_single_producer_single_consumer(10);
     fprintf(stderr,".spmc..");
-    test_single_producer_multiple_consumer();
+    test_single_producer_multiple_consumer(1000000);
+    test_single_producer_multiple_consumer(10);
     fprintf(stderr,".mpsc..");
-    test_multiple_producer_single_consumer();
+    test_multiple_producer_single_consumer(1000000);
+    test_multiple_producer_single_consumer(10);
     fprintf(stderr,".mpmc..");
-    test_multiple_producer_multiple_consumer();
+    test_multiple_producer_multiple_consumer(1000000);
+    test_multiple_producer_multiple_consumer(10);
 }
 

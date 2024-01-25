@@ -294,26 +294,27 @@ coy_get_terminal_size(void)
     return (CoyTerminalSize){ .columns = -1, .rows = -1 };
 }
 
-static inline CoyThread
-coy_thread_create(CoyThreadFunc func, void *thread_data)
+static inline void *
+coy_thread_func_internal(void *thread_params)
 {
-    pthread_t thread = {0};
-    int status = pthread_create(&thread, NULL, func, thread_data);
-    if(status == 0)
-    {
-        return (CoyThread){ .thread = thread, .ret_val = NULL, .valid = true };
-    }
-    else
-    {
-        return (CoyThread){ .valid = false };
-    }
+    CoyThread *thrd = thread_params;
+    thrd->func(thrd->thread_data);
+
+    return NULL;
+}
+
+static inline bool
+coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
+{
+    *thrd = (CoyThread){ .func=func, .thread_data=thread_data };
+    return 0 == pthread_create((pthread_t *)&thrd->thread, NULL, coy_thread_func_internal, thrd);
 }
 
 static inline bool
 coy_thread_join(CoyThread *thread)
 {
 
-    int status = pthread_join(thread->thread, &thread->ret_val);
+    int status = pthread_join(thread->thread, NULL);
     if(status == 0) { return true; }
     return false;
 }
@@ -321,7 +322,7 @@ coy_thread_join(CoyThread *thread)
 static inline void 
 coy_thread_destroy(CoyThread *thread)
 {
-    thread->valid = false;
+    *thread = (CoyThread){0};
 }
 
 static inline CoyMutex 

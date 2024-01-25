@@ -438,25 +438,40 @@ coy_memory_free(CoyMemoryBlock *mem)
     return;
 }
 
-static inline CoyThread
-coy_thread_create(CoyThreadFunc func, void *thread_data)
+static inline u32 
+coy_thread_func_internal(void *thread_params)
 {
+    CoyThread *thrd = thread_params;
+    thrd->func(thrd->thread_data);
+
+    return 0;
+}
+
+static inline bool
+coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
+{
+    thrd->func = func;
+    thrd->thread_data = thread_data;
+
     DWORD id = 0;
     HANDLE h =  CreateThread(
-        NULL,        // [in, optional]  LPSECURITY_ATTRIBUTES   lpThreadAttributes,
-        0,           // [in]            SIZE_T                  dwStackSize,
-        func,        // [in]            LPTHREAD_START_ROUTINE  lpStartAddress,
-        thread_data, // [in, optional]  __drv_aliasesMem LPVOID lpParameter,
-        0,           // [in]            DWORD                   dwCreationFlags,
-        &id          // [out, optional] LPDWORD                 lpThreadId
+        NULL,                       // [in, optional]  LPSECURITY_ATTRIBUTES   lpThreadAttributes,
+        0,                          // [in]            SIZE_T                  dwStackSize,
+        coy_thread_func_internal,   // [in]            LPTHREAD_START_ROUTINE  lpStartAddress,
+        thrd,                       // [in, optional]  __drv_aliasesMem LPVOID lpParameter,
+        0,                          // [in]            DWORD                   dwCreationFlags,
+        &id                         // [out, optional] LPDWORD                 lpThreadId
     );
 
     if(h == INVALID_HANDLE_VALUE)
     {
-        return (CoyThread){ .valid=false };
+        return false;
     }
 
-    return (CoyThread){ .thread_handle = h, .thread_id = id, .ret_val = -1, .valid=true };
+    thrd->thread_handle = h;
+    thrd->thread_id = id;
+
+    return true;
 }
 
 static inline bool

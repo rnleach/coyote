@@ -221,17 +221,19 @@ static inline void coy_memory_free(CoyMemoryBlock *mem);
 /* Windows requires a u32 return type while Linux (pthreads) requires a void*. Just return 0 or 1 to indicate success
  * and Coyote will cast it to the correct type for the API.
  */
-#if defined(_WIN32) || defined(_WIN64)
 
-typedef u32 CoyThreadFunReturnType;
+typedef void (*CoyThreadFunc)(void *thread_data);
+
+#if defined(_WIN32) || defined(_WIN64)
 
 typedef struct 
 {
-    /* Win32 HANDLE = void * */
-    void *thread_handle;
-    CoyThreadFunReturnType ret_val;
+    CoyThreadFunc func;
+    void *thread_data;
     u32 thread_id;
-    bool valid;
+
+    /* Win32 HANDLE = void * */
+    _Alignas(32) void *thread_handle;
 } CoyThread;
 
 typedef struct 
@@ -252,13 +254,12 @@ typedef struct
 
 #elif defined(__linux__) || defined(__APPLE__)
 
-typedef void* CoyThreadFunReturnType;
-
 typedef struct 
 {
-    pthread_t thread;
-    CoyThreadFunReturnType ret_val;
-    bool valid;
+    CoyThreadFunc func;
+    void *thread_data;
+
+    _Alignas(32) pthread_t thread;
 } CoyThread;
 
 typedef struct 
@@ -276,12 +277,9 @@ typedef struct
 
 #endif
 
-typedef CoyThreadFunReturnType (*CoyThreadFunc)(void *thread_data);
-
-static inline CoyThread coy_thread_create(CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
+static inline bool coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
 static inline bool coy_thread_join(CoyThread *thread); /* Returns false if there was an error. */
 static inline void coy_thread_destroy(CoyThread *thread);
-#define coy_thread_get_result(thread) (thread).ret_val
 
 static inline CoyMutex coy_mutex_create(void);
 static inline bool coy_mutex_lock(CoyMutex *mutex);    /* Block, return false on failure. */
@@ -310,6 +308,7 @@ typedef struct
     CoyCondVar data_available;
     i32 num_producers;
     i32 num_consumers;
+    bool finished;
     void *buf[COYOTE_CHANNEL_SIZE];
 } CoyChannel;
 
@@ -320,6 +319,7 @@ static inline void coy_channel_wait_until_ready_to_send(CoyChannel *chan);
 static inline void coy_channel_register_sender(CoyChannel *chan);
 static inline void coy_channel_register_receiver(CoyChannel *chan);
 static inline void coy_channel_done_sending(CoyChannel *chan);
+static inline void coy_channel_finish(CoyChannel *chan);
 static inline void coy_channel_done_receiving(CoyChannel *chan);
 static inline bool coy_channel_send(CoyChannel *chan, void *data);
 static inline bool coy_channel_receive(CoyChannel *chan, void **out);
@@ -665,6 +665,7 @@ coy_channel_create(void)
             .data_available = coy_condvar_create(),
             .num_producers = 0,
             .num_consumers = 0,
+            .finished = false,
             .buf = {0},
         };
 
@@ -703,7 +704,12 @@ coy_channel_wait_until_ready_to_receive(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    while(chan->num_producers == 0 && chan->count == 0) { coy_condvar_sleep(&chan->data_available, &chan->mtx); }
+
+    while(chan->num_producers == 0 && chan->count == 0 && !chan->finished) 
+    {
+        coy_condvar_sleep(&chan->data_available, &chan->mtx); 
+    }
+
     success = coy_mutex_unlock(&chan->mtx);
     Assert(success);
 }
@@ -788,6 +794,22 @@ coy_channel_done_sending(CoyChannel *chan)
 }
 
 static inline void 
+coy_channel_finish(CoyChannel *chan)
+{
+    bool success = coy_mutex_lock(&chan->mtx);
+    Assert(success);
+    Assert(chan->num_producers == 0);
+
+    chan->finished = true;
+
+    success = coy_condvar_wake_all(&chan->data_available);
+    Assert(success);
+
+    success = coy_mutex_unlock(&chan->mtx);
+    Assert(success);
+}
+
+static inline void 
 coy_channel_done_receiving(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
@@ -829,6 +851,8 @@ coy_channel_send(CoyChannel *chan, void *data)
         Assert(success);
     }
 
+    Assert(chan->count < COYOTE_CHANNEL_SIZE || chan->num_consumers == 0);
+
     if(chan->num_consumers > 0)
     {
         chan->buf[(chan->tail) % COYOTE_CHANNEL_SIZE] = data;
@@ -866,6 +890,8 @@ coy_channel_receive(CoyChannel *chan, void **out)
         success = coy_condvar_sleep(&chan->data_available, &chan->mtx);
         Assert(success);
     }
+
+    Assert(chan->count > 0 || chan->num_producers == 0);
 
     *out = NULL;
     if(chan->count > 0)
