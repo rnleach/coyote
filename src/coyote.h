@@ -400,7 +400,7 @@ static inline u64 coy_profile_read_os_page_fault_count(void);
 #define COY_END_PROFILE(ap) coy_profile_end_block(&ap)
 
 #if COY_PROFILE
-#define COY_PROFILE_STATIC_CHECK _Static_assert(__COUNTER__ <= ARRAY_SIZE(coy_global_profiler.blocks), "not enough profiler blocks")
+#define COY_PROFILE_STATIC_CHECK _Static_assert(__COUNTER__ <= COY_ARRAY_SIZE(coy_global_profiler.blocks), "not enough profiler blocks")
 #else
 #define COY_PROFILE_STATIC_CHECK
 #endif
