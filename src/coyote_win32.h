@@ -478,23 +478,14 @@ static inline bool
 coy_thread_join(CoyThread *thread)
 {
     DWORD status = WaitForSingleObject(thread->thread_handle, INFINITE);
-    if(status != WAIT_OBJECT_0) { return false; }
-
-    BOOL success = GetExitCodeThread(
-      thread->thread_handle, // [in]  HANDLE  hThread,
-      &thread->ret_val       // [out] LPDWORD lpExitCode
-    );
-
-    if(!success) { return false; }
-
-    return true;
+    return status == WAIT_OBJECT_0;
 }
 
 static inline void 
 coy_thread_destroy(CoyThread *thread)
 {
     /* BOOL success = */ CloseHandle(thread->thread_handle);
-    thread->valid = false;
+    *thread = (CoyThread){0};
 }
 
 static inline CoyMutex 
