@@ -471,8 +471,8 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
     }
 
     _Static_assert(sizeof(h) <= sizeof(thrd->handle), "handle doesn't fit in CoyThread");
-    _Static_assert(_Alignof(h) <= _Alignof(thrd->handle), "handle doesn't fit alignment in CoyThread");
-    memcpy(thrd->handle, &h, sizeof(h));
+    _Static_assert(_Alignof(HANDLE) <= 16, "handle doesn't fit alignment in CoyThread");
+    memcpy(&thrd->handle[0], &h, sizeof(h));
 
     return true;
 }
@@ -480,16 +480,16 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
 static inline bool
 coy_thread_join(CoyThread *thread)
 {
-    HANDLE h = (HANDLE)thread->handle;
-    DWORD status = WaitForSingleObject(h, INFINITE);
+    HANDLE *h = (HANDLE *)&thread->handle[0];
+    DWORD status = WaitForSingleObject(*h, INFINITE);
     return status == WAIT_OBJECT_0;
 }
 
 static inline void 
 coy_thread_destroy(CoyThread *thread)
 {
-    HANDLE h = (HANDLE)thread->handle;
-    /* BOOL success = */ CloseHandle(h);
+    HANDLE *h = (HANDLE *)&thread->handle[0];
+    /* BOOL success = */ CloseHandle(*h);
     *thread = (CoyThread){0};
 }
 
@@ -498,8 +498,8 @@ coy_mutex_create()
 {
     CoyMutex mutex = {0};
 
-    _Static_assert(sizeof(CRITICAL_SECTION) <= sizeof(mtx.mutex), "CRITICAL_SECTION doesn't fit in CoyMutex");
-    _Static_assert(_Alignof(CRITICAL_SECTION) <= _Alignof(mtx.mutex), "CRITICAL_SECTION doesn't fit alignment in CoyMutex");
+    _Static_assert(sizeof(CRITICAL_SECTION) <= sizeof(mutex.mutex), "CRITICAL_SECTION doesn't fit in CoyMutex");
+    _Static_assert(_Alignof(CRITICAL_SECTION) <= 16, "CRITICAL_SECTION doesn't fit alignment in CoyMutex");
 
     CRITICAL_SECTION *m = (CRITICAL_SECTION *)&mutex.mutex[0];
     mutex.valid = InitializeCriticalSectionAndSpinCount(m, 0x400) != 0;
@@ -533,7 +533,7 @@ coy_condvar_create(void)
     CoyCondVar cv = {0};
 
     _Static_assert(sizeof(CONDITION_VARIABLE) <= sizeof(cv.cond_var), "CONDITION_VARIABLE doesn't fit in CoyCondVar");
-    _Static_assert(_Alignof(CONDITION_VARIABLE) <= _Alignof(cv.cond_var), "CONDITION_VARIABLE doesn't fit alignment in CoyCondVar");
+    _Static_assert(_Alignof(CONDITION_VARIABLE) <= 16, "CONDITION_VARIABLE doesn't fit alignment in CoyCondVar");
 
     InitializeConditionVariable((CONDITION_VARIABLE *)&cv.cond_var);
     cv.valid = true;

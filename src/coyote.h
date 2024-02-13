@@ -218,20 +218,20 @@ typedef void (*CoyThreadFunc)(void *thread_data);
 
 typedef struct
 {
-    _Alignas(max_align_t) byte handle[32];
+    _Alignas(16) byte handle[32];
     CoyThreadFunc func;
     void *thread_data;
 } CoyThread;
 
 typedef struct 
 {
-    _Alignas(max_align_t) byte mutex[64];
+    _Alignas(16) byte mutex[64];
     bool valid;
 } CoyMutex;
 
 typedef struct
 {
-    _Alignas(max_align_t) byte cond_var[64];
+    _Alignas(16) byte cond_var[64];
     bool valid;
 } CoyCondVar;
 
@@ -883,7 +883,7 @@ typedef struct
 {
     bool initialized;
 #if defined(_WIN64)
-    HANDLE proc;
+    void *proc;
 #else
     int perf_fd;
 #endif
