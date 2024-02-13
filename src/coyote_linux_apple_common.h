@@ -309,7 +309,7 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
     *thrd = (CoyThread){ .func=func, .thread_data=thread_data };
 
     _Static_assert(sizeof(pthread_t) <= sizeof(thrd->handle), "pthread_t doesn't fit in CoyThread");
-    _Static_assert(_Alignof(pthread_t) <= _Alignof(thrd->handle), "pthread_t doesn't fit alignment in CoyThread");
+    _Static_assert(_Alignof(pthread_t) <= 16, "pthread_t doesn't fit alignment in CoyThread");
 
     return 0 == pthread_create((pthread_t *)&thrd->handle, NULL, coy_thread_func_internal, thrd);
 }
@@ -337,7 +337,7 @@ coy_mutex_create()
     pthread_mutex_t mut = {0};
 
     _Static_assert(sizeof(pthread_mutex_t) <= sizeof(mtx.mutex), "pthread_mutex_t doesn't fit in CoyMutex");
-    _Static_assert(_Alignof(pthread_mutex_t) <= _Alignof(mtx.mutex), "pthread_mutex_t doesn't fit alignment in CoyMutex");
+    _Static_assert(_Alignof(pthread_mutex_t) <= 16, "pthread_mutex_t doesn't fit alignment in CoyMutex");
 
     int status = pthread_mutex_init(&mut, NULL);
     if(status == 0)
@@ -376,7 +376,7 @@ coy_condvar_create(void)
     CoyCondVar cv = {0};
 
     _Static_assert(sizeof(pthread_cond_t) <= sizeof(cv.cond_var), "pthread_cond_t doesn't fit in CoyCondVar");
-    _Static_assert(_Alignof(pthread_cond_t) <= _Alignof(cv.cond_var), "pthread_cond_t doesn't fit alignment in CoyCondVar");
+    _Static_assert(_Alignof(pthread_cond_t) <= 16, "pthread_cond_t doesn't fit alignment in CoyCondVar");
 
     cv.valid = pthread_cond_init((pthread_cond_t *)&cv.cond_var[0], NULL) == 0;
     return cv;
