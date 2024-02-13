@@ -307,14 +307,19 @@ static inline bool
 coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
 {
     *thrd = (CoyThread){ .func=func, .thread_data=thread_data };
-    return 0 == pthread_create((pthread_t *)&thrd->thread, NULL, coy_thread_func_internal, thrd);
+
+    _Static_assert(sizeof(pthread_t) <= sizeof(thrd->handle), "pthread_t doesn't fit in CoyThread");
+    _Static_assert(_Alignof(pthread_t) <= _Alignof(thrd->handle), "pthread_t doesn't fit alignment in CoyThread");
+
+    return 0 == pthread_create((pthread_t *)&thrd->handle, NULL, coy_thread_func_internal, thrd);
 }
 
 static inline bool
 coy_thread_join(CoyThread *thread)
 {
 
-    int status = pthread_join(thread->thread, NULL);
+    pthread_t *t = (pthread_t  *)thread->handle;
+    int status = pthread_join(*t, NULL);
     if(status == 0) { return true; }
     return false;
 }
@@ -328,32 +333,40 @@ coy_thread_destroy(CoyThread *thread)
 static inline CoyMutex 
 coy_mutex_create()
 {
+    CoyMutex mtx = {0};
     pthread_mutex_t mut = {0};
+
+    _Static_assert(sizeof(pthread_mutex_t) <= sizeof(mtx.mutex), "pthread_mutex_t doesn't fit in CoyMutex");
+    _Static_assert(_Alignof(pthread_mutex_t) <= _Alignof(mtx.mutex), "pthread_mutex_t doesn't fit alignment in CoyMutex");
+
     int status = pthread_mutex_init(&mut, NULL);
     if(status == 0)
     {
-        return (CoyMutex){ .mutex=mut, .valid=true };
+        memcpy(&mtx.mutex[0], &mut, sizeof(mut));
+        mtx.valid = true;
+
+        return mtx;
     }
 
-    return (CoyMutex){ .valid=false };
+    return mtx;
 }
 
 static inline bool 
 coy_mutex_lock(CoyMutex *mutex)
 {
-    return pthread_mutex_lock(&mutex->mutex) == 0;
+    return pthread_mutex_lock((pthread_mutex_t *)&mutex->mutex[0]) == 0;
 }
 
 static inline bool 
 coy_mutex_unlock(CoyMutex *mutex)
 {
-    return pthread_mutex_unlock(&mutex->mutex) == 0;
+    return pthread_mutex_unlock((pthread_mutex_t *)&mutex->mutex[0]) == 0;
 }
 
 static inline void 
 coy_mutex_destroy(CoyMutex *mutex)
 {
-    pthread_mutex_destroy(&mutex->mutex);
+    pthread_mutex_destroy((pthread_mutex_t *)&mutex->mutex[0]);
     mutex->valid = false;
 }
 
@@ -361,32 +374,36 @@ static inline CoyCondVar
 coy_condvar_create(void)
 {
     CoyCondVar cv = {0};
-    cv.valid = pthread_cond_init(&cv.cond_var, NULL) == 0;
+
+    _Static_assert(sizeof(pthread_cond_t) <= sizeof(cv.cond_var), "pthread_cond_t doesn't fit in CoyCondVar");
+    _Static_assert(_Alignof(pthread_cond_t) <= _Alignof(cv.cond_var), "pthread_cond_t doesn't fit alignment in CoyCondVar");
+
+    cv.valid = pthread_cond_init((pthread_cond_t *)&cv.cond_var[0], NULL) == 0;
     return cv;
 }
 
 static inline bool 
 coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx)
 {
-    return 0 == pthread_cond_wait(&cv->cond_var, &mtx->mutex);
+    return 0 == pthread_cond_wait((pthread_cond_t *)&cv->cond_var[0], (pthread_mutex_t *)&mtx->mutex[0]);
 }
 
 static inline bool 
 coy_condvar_wake(CoyCondVar *cv)
 {
-    return 0 == pthread_cond_signal(&cv->cond_var);
+    return 0 == pthread_cond_signal((pthread_cond_t *)&cv->cond_var[0]);
 }
 
 static inline bool 
 coy_condvar_wake_all(CoyCondVar *cv)
 {
-    return 0 == pthread_cond_broadcast(&cv->cond_var);
+    return 0 == pthread_cond_broadcast((pthread_cond_t *)&cv->cond_var[0]);
 }
 
 static inline void 
 coy_condvar_destroy(CoyCondVar *cv)
 {
-    int status = pthread_cond_destroy(&cv->cond_var);
+    int status = pthread_cond_destroy((pthread_cond_t *)&cv->cond_var[0]);
     Assert(status == 0);
     cv->valid = false;
 }

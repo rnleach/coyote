@@ -5,16 +5,7 @@
 #include <stddef.h>
 
 #if defined(_WIN32) || defined(_WIN64)
-
-#include <windows.h>
 #pragma warning(disable: 4142)
-
-#elif defined(__linux__) || defined(__APPLE__)
-
-#include <pthread.h>
-
-#else
-#error "Platform not supported by Coyote Library"
 #endif
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -58,6 +49,7 @@ typedef int64_t     i64;
  *-------------------------------------------------------------------------------------------------------------------------*/
 
 void *memset(void *buffer, int val, size_t num_bytes);
+void *memcpy(void *dest, void const *src, size_t num_bytes);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                       Error Handling
@@ -224,58 +216,24 @@ static inline void coy_memory_free(CoyMemoryBlock *mem);
 
 typedef void (*CoyThreadFunc)(void *thread_data);
 
-#if defined(_WIN32) || defined(_WIN64)
-
-typedef struct 
+typedef struct
 {
+    _Alignas(max_align_t) byte handle[32];
     CoyThreadFunc func;
     void *thread_data;
-    u32 thread_id;
-
-    /* Win32 HANDLE = void * */
-    _Alignas(32) void *thread_handle;
 } CoyThread;
 
 typedef struct 
 {
-    /* Win32 API calls them critical sections. It also has something called mutex, but it works for interprocess 
-     * synchronization as well, and so it is slower. Within a single process, critical sections are a faster way to
-     * do synchronization.
-     */
-    CRITICAL_SECTION mutex;
+    _Alignas(max_align_t) byte mutex[64];
     bool valid;
 } CoyMutex;
 
 typedef struct
 {
-    CONDITION_VARIABLE cond_var;
+    _Alignas(max_align_t) byte cond_var[64];
     bool valid;
 } CoyCondVar;
-
-#elif defined(__linux__) || defined(__APPLE__)
-
-typedef struct 
-{
-    CoyThreadFunc func;
-    void *thread_data;
-
-    _Alignas(32) pthread_t thread;
-} CoyThread;
-
-typedef struct 
-{
-    pthread_mutex_t mutex;
-    bool valid;
-} CoyMutex;
-
-
-typedef struct
-{
-    pthread_cond_t cond_var;
-    bool valid;
-} CoyCondVar;
-
-#endif
 
 static inline bool coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
 static inline bool coy_thread_join(CoyThread *thread); /* Returns false if there was an error. */
