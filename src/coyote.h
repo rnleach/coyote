@@ -882,11 +882,7 @@ coy_channel_receive(CoyChannel *chan, void **out)
 typedef struct
 {
     bool initialized;
-#if defined(_WIN64)
-    void *proc;
-#else
-    int perf_fd;
-#endif
+    uptr handle;
 } CoyOsMetrics;
 
 static CoyOsMetrics coy_global_os_metrics;

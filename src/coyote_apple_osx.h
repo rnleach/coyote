@@ -52,7 +52,7 @@ coy_profile_initialize_os_metrics(void)
 {
     if(!coy_global_os_metrics.initialized)
     {
-        coy_global_os_metrics.perf_fd = 0;
+        coy_global_os_metrics.handle = 0;
         coy_global_os_metrics.initialized = true;
     }
 }

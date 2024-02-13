@@ -577,7 +577,7 @@ coy_profile_initialize_os_metrics(void)
 {
     if(!coy_global_os_metrics.initialized)
     {
-        coy_global_os_metrics.proc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, GetCurrentProcessId());
+        coy_global_os_metrics.handle = (uptr)OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false, GetCurrentProcessId());
         coy_global_os_metrics.initialized = true;
     }
 }
@@ -592,7 +592,7 @@ static inline u64
 coy_profile_read_os_page_fault_count(void)
 {
     PROCESS_MEMORY_COUNTERS_EX memory_counters = { .cb = sizeof(memory_counters) };
-    GetProcessMemoryInfo(coy_global_os_metrics.proc, (PROCESS_MEMORY_COUNTERS *)&memory_counters, sizeof(memory_counters));
+    GetProcessMemoryInfo((HANDLE)coy_global_os_metrics.handle, (PROCESS_MEMORY_COUNTERS *)&memory_counters, sizeof(memory_counters));
 
     return memory_counters.PageFaultCount;
 }

@@ -71,7 +71,7 @@ coy_profile_initialize_os_metrics(void)
 
         ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
 
-        coy_global_os_metrics.perf_fd = fd;
+        coy_global_os_metrics.handle = (uptr)fd;
         coy_global_os_metrics.initialized = true;
     }
 }
@@ -79,20 +79,20 @@ coy_profile_initialize_os_metrics(void)
 static inline void 
 coy_profile_finalize_os_metrics(void)
 {
-    close(coy_global_os_metrics.perf_fd);
+    close((int)coy_global_os_metrics.handle);
 }
 
 static inline u64
 coy_profile_read_os_page_fault_count(void)
 {
     u64 count = (u64)-1;
-    ioctl(coy_global_os_metrics.perf_fd, PERF_EVENT_IOC_DISABLE, 0);
-    int size_read = read(coy_global_os_metrics.perf_fd, &count, sizeof(count));
+    ioctl((int)coy_global_os_metrics.handle, PERF_EVENT_IOC_DISABLE, 0);
+    int size_read = read((int)coy_global_os_metrics.handle, &count, sizeof(count));
     if(size_read != sizeof(count))
     {
         count = (u64)-1; 
     }
-    ioctl(coy_global_os_metrics.perf_fd, PERF_EVENT_IOC_ENABLE, 0);
+    ioctl((int)coy_global_os_metrics.handle, PERF_EVENT_IOC_ENABLE, 0);
     return count;
 }
 
