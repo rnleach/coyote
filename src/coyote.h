@@ -94,45 +94,53 @@ static inline u64 coy_time_now(void); // Get the current system time in seconds 
 // Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
 static inline bool coy_path_append(size buf_len, char path_buffer[], char const *new_path);
 
+static inline size coy_file_size(char const *filename); /* size of a file in bytes, -1 on error. */
+
 typedef struct
 {
     iptr handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
     bool valid;  // error indicator
-} CoyFile;
+} CoyFileReader;
 
-static inline CoyFile coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
-static inline CoyFile coy_file_append(char const *filename); // Create file if it doesn't exist yet, otherwise append.
-static inline CoyFile coy_file_open_read(char const *filename);
-static inline void coy_file_close(CoyFile *file); /* Must set valid member to false on success or failure! */
-static inline size coy_file_size(char const *filename); /* size of a file in bytes, -1 on error. */
-
-static inline size coy_file_write(CoyFile *file, size nbytes_write, byte const *buffer); // return nbytes written or -1 on error
-static inline bool coy_file_write_f64(CoyFile *file, f64 val);
-static inline bool coy_file_write_i8(CoyFile *file, i8 val);
-static inline bool coy_file_write_i16(CoyFile *file, i16 val);
-static inline bool coy_file_write_i32(CoyFile *file, i32 val);
-static inline bool coy_file_write_i64(CoyFile *file, i64 val);
-static inline bool coy_file_write_u8(CoyFile *file, u8 val);
-static inline bool coy_file_write_u16(CoyFile *file, u16 val);
-static inline bool coy_file_write_u32(CoyFile *file, u32 val);
-static inline bool coy_file_write_u64(CoyFile *file, u64 val);
-static inline bool coy_file_write_str(CoyFile *file, size len, char *str);
-
-static inline size coy_file_read(CoyFile *file, size buf_size, byte *buffer); // return nbytes read or -1 on error
-static inline bool coy_file_read_f64(CoyFile *file, f64 *val);
-static inline bool coy_file_read_i8(CoyFile *file, i8 *val);
-static inline bool coy_file_read_i16(CoyFile *file, i16 *val);
-static inline bool coy_file_read_i32(CoyFile *file, i32 *val);
-static inline bool coy_file_read_i64(CoyFile *file, i64 *val);
-static inline bool coy_file_read_u8(CoyFile *file, u8 *val);
-static inline bool coy_file_read_u16(CoyFile *file, u16 *val);
-static inline bool coy_file_read_u32(CoyFile *file, u32 *val);
-static inline bool coy_file_read_u64(CoyFile *file, u64 *val);
-
-static inline bool coy_file_read_str(CoyFile *file, size *len, char *str); /* set len to buffer lenght, updated to actual size on return. */
+static inline CoyFileReader coy_file_open_read(char const *filename);
+static inline size coy_file_read(CoyFileReader *file, size buf_size, byte *buffer); // return nbytes read or -1 on error
+static inline bool coy_file_read_f64(CoyFileReader *file, f64 *val);
+static inline bool coy_file_read_i8(CoyFileReader *file, i8 *val);
+static inline bool coy_file_read_i16(CoyFileReader *file, i16 *val);
+static inline bool coy_file_read_i32(CoyFileReader *file, i32 *val);
+static inline bool coy_file_read_i64(CoyFileReader *file, i64 *val);
+static inline bool coy_file_read_u8(CoyFileReader *file, u8 *val);
+static inline bool coy_file_read_u16(CoyFileReader *file, u16 *val);
+static inline bool coy_file_read_u32(CoyFileReader *file, u32 *val);
+static inline bool coy_file_read_u64(CoyFileReader *file, u64 *val);
+static inline bool coy_file_read_str(CoyFileReader *file, size *len, char *str); /* set len to buffer length, updated to actual size on return. */
+static inline void coy_file_reader_close(CoyFileReader *file); /* Must set valid member to false on success or failure! */
 
 // return size in bytes of the loaded data or -1 on error. If buffer is too small, load nothing and return -1
 static inline size coy_file_slurp(char const *filename, size buf_size, byte *buffer);
+
+
+typedef struct
+{
+    iptr handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
+    bool valid;  // error indicator
+} CoyFileWriter;
+
+static inline CoyFileWriter coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
+static inline CoyFileWriter coy_file_append(char const *filename); // Create file if it doesn't exist yet, otherwise append.
+static inline void coy_file_writer_close(CoyFileWriter *file); /* Must set valid member to false on success or failure! */
+
+static inline size coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer); // return nbytes written or -1 on error
+static inline bool coy_file_write_f64(CoyFileWriter *file, f64 val);
+static inline bool coy_file_write_i8(CoyFileWriter *file, i8 val);
+static inline bool coy_file_write_i16(CoyFileWriter *file, i16 val);
+static inline bool coy_file_write_i32(CoyFileWriter *file, i32 val);
+static inline bool coy_file_write_i64(CoyFileWriter *file, i64 val);
+static inline bool coy_file_write_u8(CoyFileWriter *file, u8 val);
+static inline bool coy_file_write_u16(CoyFileWriter *file, u16 val);
+static inline bool coy_file_write_u32(CoyFileWriter *file, u32 val);
+static inline bool coy_file_write_u64(CoyFileWriter *file, u64 val);
+static inline bool coy_file_write_str(CoyFileWriter *file, size len, char *str);
 
 typedef struct
 {
@@ -417,11 +425,11 @@ coy_file_slurp(char const *filename, size buf_size, byte *buffer)
     size file_size = coy_file_size(filename);
     StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
 
-    CoyFile file = coy_file_open_read(filename);
+    CoyFileReader file = coy_file_open_read(filename);
     StopIf(!file.valid, goto ERR_RETURN);
 
     size num_bytes = coy_file_read(&file, buf_size, buffer);
-    coy_file_close(&file);
+    coy_file_reader_close(&file);
     StopIf(num_bytes != file_size, goto ERR_RETURN);
 
     return num_bytes;
@@ -431,7 +439,7 @@ ERR_RETURN:
 }
 
 static inline bool 
-coy_file_write_f64(CoyFile *file, f64 val)
+coy_file_write_f64(CoyFileWriter *file, f64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -439,7 +447,7 @@ coy_file_write_f64(CoyFile *file, f64 val)
 }
 
 static inline bool 
-coy_file_write_i8(CoyFile *file, i8 val)
+coy_file_write_i8(CoyFileWriter *file, i8 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -447,7 +455,7 @@ coy_file_write_i8(CoyFile *file, i8 val)
 }
 
 static inline bool 
-coy_file_write_i16(CoyFile *file, i16 val)
+coy_file_write_i16(CoyFileWriter *file, i16 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -455,7 +463,7 @@ coy_file_write_i16(CoyFile *file, i16 val)
 }
 
 static inline bool 
-coy_file_write_i32(CoyFile *file, i32 val)
+coy_file_write_i32(CoyFileWriter *file, i32 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -463,7 +471,7 @@ coy_file_write_i32(CoyFile *file, i32 val)
 }
 
 static inline bool 
-coy_file_write_i64(CoyFile *file, i64 val)
+coy_file_write_i64(CoyFileWriter *file, i64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -471,7 +479,7 @@ coy_file_write_i64(CoyFile *file, i64 val)
 }
 
 static inline bool 
-coy_file_write_u8(CoyFile *file, u8 val)
+coy_file_write_u8(CoyFileWriter *file, u8 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -479,7 +487,7 @@ coy_file_write_u8(CoyFile *file, u8 val)
 }
 
 static inline bool 
-coy_file_write_u16(CoyFile *file, u16 val)
+coy_file_write_u16(CoyFileWriter *file, u16 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -487,7 +495,7 @@ coy_file_write_u16(CoyFile *file, u16 val)
 }
 
 static inline bool 
-coy_file_write_u32(CoyFile *file, u32 val)
+coy_file_write_u32(CoyFileWriter *file, u32 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -495,7 +503,7 @@ coy_file_write_u32(CoyFile *file, u32 val)
 }
 
 static inline bool 
-coy_file_write_u64(CoyFile *file, u64 val)
+coy_file_write_u64(CoyFileWriter *file, u64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
     if(nbytes != sizeof(val)) { return false; }
@@ -503,7 +511,7 @@ coy_file_write_u64(CoyFile *file, u64 val)
 }
 
 static inline bool 
-coy_file_write_str(CoyFile *file, size len, char *str)
+coy_file_write_str(CoyFileWriter *file, size len, char *str)
 {
     _Static_assert(sizeof(size) == sizeof(i64), "must not be on 64 bit!");
     bool success = coy_file_write_i64(file, len);
@@ -517,7 +525,7 @@ coy_file_write_str(CoyFile *file, size len, char *str)
 }
 
 static inline bool 
-coy_file_read_f64(CoyFile *file, f64 *val)
+coy_file_read_f64(CoyFileReader *file, f64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -525,7 +533,7 @@ coy_file_read_f64(CoyFile *file, f64 *val)
 }
 
 static inline bool 
-coy_file_read_i8(CoyFile *file, i8 *val)
+coy_file_read_i8(CoyFileReader *file, i8 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -533,7 +541,7 @@ coy_file_read_i8(CoyFile *file, i8 *val)
 }
 
 static inline bool 
-coy_file_read_i16(CoyFile *file, i16 *val)
+coy_file_read_i16(CoyFileReader *file, i16 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -541,7 +549,7 @@ coy_file_read_i16(CoyFile *file, i16 *val)
 }
 
 static inline bool 
-coy_file_read_i32(CoyFile *file, i32 *val)
+coy_file_read_i32(CoyFileReader *file, i32 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -549,7 +557,7 @@ coy_file_read_i32(CoyFile *file, i32 *val)
 }
 
 static inline bool 
-coy_file_read_i64(CoyFile *file, i64 *val)
+coy_file_read_i64(CoyFileReader *file, i64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -557,7 +565,7 @@ coy_file_read_i64(CoyFile *file, i64 *val)
 }
 
 static inline bool 
-coy_file_read_u8(CoyFile *file, u8 *val)
+coy_file_read_u8(CoyFileReader *file, u8 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -565,7 +573,7 @@ coy_file_read_u8(CoyFile *file, u8 *val)
 }
 
 static inline bool 
-coy_file_read_u16(CoyFile *file, u16 *val)
+coy_file_read_u16(CoyFileReader *file, u16 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -573,7 +581,7 @@ coy_file_read_u16(CoyFile *file, u16 *val)
 }
 
 static inline bool 
-coy_file_read_u32(CoyFile *file, u32 *val)
+coy_file_read_u32(CoyFileReader *file, u32 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -581,7 +589,7 @@ coy_file_read_u32(CoyFile *file, u32 *val)
 }
 
 static inline bool 
-coy_file_read_u64(CoyFile *file, u64 *val)
+coy_file_read_u64(CoyFileReader *file, u64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
     if(nbytes != sizeof(*val)) { return false; }
@@ -589,7 +597,7 @@ coy_file_read_u64(CoyFile *file, u64 *val)
 }
 
 static inline bool 
-coy_file_read_str(CoyFile *file, size *len, char *str)
+coy_file_read_str(CoyFileReader *file, size *len, char *str)
 {
     i64 str_len = 0;
     bool success = coy_file_read_i64(file, &str_len);

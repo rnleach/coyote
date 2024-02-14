@@ -75,7 +75,7 @@ ERR_RETURN:
     return false;
 }
 
-static inline CoyFile
+static inline CoyFileWriter
 coy_file_create(char const *filename)
 {
     int fd = open( filename,                                        // char const *pathname
@@ -84,32 +84,32 @@ coy_file_create(char const *filename)
 
     if (fd >= 0)
     {
-        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
+        return (CoyFileWriter){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (iptr) fd, .valid = false };
+        return (CoyFileWriter){ .handle = (iptr) fd, .valid = false };
     }
 }
 
-static inline 
-CoyFile coy_file_append(char const *filename)
+static inline CoyFileWriter
+coy_file_append(char const *filename)
 {
     int fd = open( filename,                                        // char const *pathname
                    O_WRONLY | O_CREAT | O_APPEND,                   // Write only, create if needed, and append.
                    S_IRWXU | S_IRGRP | S_IXGRP |S_IROTH | S_IXOTH); // Default permissions 0755
 
     if (fd >= 0) {
-        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
+        return (CoyFileWriter){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (iptr) fd, .valid = false };
+        return (CoyFileWriter){ .handle = (iptr) fd, .valid = false };
     }
 }
 
 static inline size 
-coy_file_write(CoyFile *file, size nbytes_to_write, byte const *buffer)
+coy_file_write(CoyFileWriter *file, size nbytes_to_write, byte const *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -124,7 +124,14 @@ ERR_RETURN:
     return -1;
 }
 
-static inline CoyFile 
+static inline void 
+coy_file_writer_close(CoyFileWriter *file)
+{
+    /* int err_code = */ close((int)file->handle);
+    file->valid = false;
+}
+
+static inline CoyFileReader 
 coy_file_open_read(char const *filename)
 {
     int fd = open( filename, // char const *pathname
@@ -133,16 +140,16 @@ coy_file_open_read(char const *filename)
 
     if (fd >= 0)
     {
-        return (CoyFile){ .handle = (iptr) fd, .valid = true  };
+        return (CoyFileReader){ .handle = (iptr) fd, .valid = true  };
     }
     else
     {
-        return (CoyFile){ .handle = (iptr) fd, .valid = false };
+        return (CoyFileReader){ .handle = (iptr) fd, .valid = false };
     }
 }
 
 static inline size 
-coy_file_read(CoyFile *file, size buf_size, byte *buffer)
+coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
 {
     _Static_assert(sizeof(ssize_t) <= sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
     Assert(buf_size > 0);
@@ -170,7 +177,7 @@ ERR_RETURN:
 }
 
 static inline void 
-coy_file_close(CoyFile *file)
+coy_file_reader_close(CoyFileReader *file)
 {
     /* int err_code = */ close((int)file->handle);
     file->valid = false;

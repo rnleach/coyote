@@ -44,29 +44,29 @@ test_file_create_write_append_open_read_close(void)
     Assert(success);
 
     // Create the file and write to it.
-    CoyFile write_test = coy_file_create(path_buf);
+    CoyFileWriter write_test = coy_file_create(path_buf);
     Assert(write_test.valid);
 
     char const hello_str[] = "Hello File.\n";
     size num_bytes_written = coy_file_write(&write_test, sizeof(hello_str) - 1, hello_str);
     Assert(num_bytes_written == sizeof(hello_str) - 1);
 
-    coy_file_close(&write_test);
+    coy_file_writer_close(&write_test);
     Assert(!write_test.valid);
 
     // Open the file for appending and write to it.
-    CoyFile append_test = coy_file_append(path_buf);
+    CoyFileWriter append_test = coy_file_append(path_buf);
     Assert(append_test.valid);
 
     char const hello_again_str[] = "Hello Again File.\n";
     num_bytes_written = coy_file_write(&append_test, sizeof(hello_again_str) - 1, hello_again_str);
     Assert(num_bytes_written == sizeof(hello_again_str) - 1);
 
-    coy_file_close(&append_test);
+    coy_file_writer_close(&append_test);
     Assert(!append_test.valid);
 
     // Open the file and read from it.
-    CoyFile read_test = coy_file_open_read(path_buf);
+    CoyFileReader read_test = coy_file_open_read(path_buf);
     Assert(read_test.valid);
     char read_str[40] = {0};
     size num_bytes_read = coy_file_read(&read_test, sizeof(read_str), read_str);
@@ -77,7 +77,7 @@ test_file_create_write_append_open_read_close(void)
 	  Assert(should_have_read_str[i] == read_str[i]);
     }
 
-    coy_file_close(&read_test);
+    coy_file_reader_close(&read_test);
     Assert(!read_test.valid);
 
     return;

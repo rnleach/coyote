@@ -93,7 +93,7 @@ ERR_RETURN:
     return false;
 }
 
-static inline CoyFile
+static inline CoyFileWriter
 coy_file_create(char const *filename)
 {
     HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
@@ -106,16 +106,16 @@ coy_file_create(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (iptr)fh, .valid = true};
+        return (CoyFileWriter){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFileWriter){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
-static inline 
-CoyFile coy_file_append(char const *filename)
+static inline CoyFileWriter
+coy_file_append(char const *filename)
 {
     HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
                             FILE_APPEND_DATA,      // [in]           DWORD                 dwDesiredAccess,
@@ -127,16 +127,25 @@ CoyFile coy_file_append(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (iptr)fh, .valid = true};
+        return (CoyFileWriter){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFileWriter){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
+static inline void 
+coy_file_writer_close(CoyFileWriter *file)
+{
+    CloseHandle((HANDLE)file->handle);
+    file->valid = false;
+
+    return;
+}
+
 static inline size 
-coy_file_write(CoyFile *file, size nbytes_write, byte const *buffer)
+coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -156,7 +165,7 @@ ERR_RETURN:
     return -1;
 }
 
-static inline CoyFile 
+static inline CoyFileReader
 coy_file_open_read(char const *filename)
 {
     HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
@@ -169,16 +178,16 @@ coy_file_open_read(char const *filename)
 
     if(fh != INVALID_HANDLE_VALUE)
     {
-        return (CoyFile){.handle = (iptr)fh, .valid = true};
+        return (CoyFileReader){.handle = (iptr)fh, .valid = true};
     }
     else
     {
-        return (CoyFile){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
+        return (CoyFileReader){.handle = (iptr)INVALID_HANDLE_VALUE, .valid = false};
     }
 }
 
 static inline size 
-coy_file_read(CoyFile *file, size buf_size, byte *buffer)
+coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
@@ -197,7 +206,7 @@ ERR_RETURN:
 }
 
 static inline void 
-coy_file_close(CoyFile *file)
+coy_file_reader_close(CoyFileReader *file)
 {
     CloseHandle((HANDLE)file->handle);
     file->valid = false;
@@ -225,7 +234,7 @@ ERR_RETURN:
 static inline CoyMemMappedFile 
 coy_memmap_read_only(char const *filename)
 {
-    CoyFile cf = coy_file_open_read(filename);
+    CoyFileReader cf = coy_file_open_read(filename);
     StopIf(!cf.valid, goto ERR_RETURN);
 
     HANDLE fmh =  CreateFileMappingA((HANDLE)cf.handle, // [in]           HANDLE                hFile,
@@ -276,7 +285,7 @@ coy_memmap_close(CoyMemMappedFile *file)
 
     /*BOOL success = */UnmapViewOfFile(data);
     CloseHandle(fmh);
-    CoyFile cf = { .handle = fh, .valid = true };
+    CoyFileReader cf = { .handle = fh, .valid = true };
     coy_file_close(&cf);
 
     file->valid = false;

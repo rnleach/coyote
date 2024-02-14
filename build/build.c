@@ -117,11 +117,11 @@ main(int argc, char *argv[])
     }
 
     // Write out the buffer
-    CoyFile coyote_ = coy_file_create("coyote.h");
-    CoyFile *coyote = &coyote_;
+    CoyFileWriter coyote_ = coy_file_create("coyote.h");
+    CoyFileWriter *coyote = &coyote_;
     StopIf(!coyote->valid, fprintf(stderr, "Error opening coyote.h for output\n"); return 1);
 
     size coyote_wrote = coy_file_write(coyote, oi, finished_lib);
 
-    coy_file_close(coyote);
+    coy_file_writer_close(coyote);
 }
