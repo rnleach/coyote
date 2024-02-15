@@ -73,7 +73,6 @@ test_single_producer_single_consumer(i32 num_to_send)
 
     success = coy_thread_join(&producer_thread);
     Assert(success);
-    coy_channel_finish(&chan);
 
     success = coy_thread_join(&consumer_thread);
     Assert(success);
@@ -104,8 +103,6 @@ test_single_producer_multiple_consumer(i32 num_to_send)
 
     success = coy_thread_join(&producer_thread);
     Assert(success);
-
-    coy_channel_finish(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
@@ -150,8 +147,6 @@ test_multiple_producer_single_consumer(i32 num_to_send)
         Assert(success);
     }
 
-    coy_channel_finish(&chan);
-
     success = coy_thread_join(&consumer_thread);
     Assert(success);
 
@@ -189,8 +184,6 @@ test_multiple_producer_multiple_consumer(i32 num_to_send)
         success = coy_thread_join(&producer_threads[i]);
         Assert(success);
     }
-
-    coy_channel_finish(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
