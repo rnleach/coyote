@@ -221,8 +221,9 @@ coyote_threads_tests(void)
     fprintf(stderr,".spmc..");
     test_single_producer_multiple_consumer(1000000);
     test_single_producer_multiple_consumer(10);
-    fprintf(stderr,".mpsc..");
+    fprintf(stderr,".mpsc 1000000..");
     test_multiple_producer_single_consumer(1000000);
+    fprintf(stderr,".mpsc 10..");
     test_multiple_producer_single_consumer(10);
     fprintf(stderr,".mpmc..");
     test_multiple_producer_multiple_consumer(1000000);

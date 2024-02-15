@@ -4,10 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#if defined(_WIN32) || defined(_WIN64)
-#pragma warning(disable: 4142)
-#endif
-
 /*---------------------------------------------------------------------------------------------------------------------------
  * Define simpler types.
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -1029,6 +1025,7 @@ coy_profile_end_block(CoyProfileAnchor *anchor)
 
 #if defined(_WIN32) || defined(_WIN64)
 
+#pragma warning(disable: 4142)
 #include "coyote_win32.h"
 #pragma warning(default: 4142)
 

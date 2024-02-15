@@ -145,6 +145,39 @@ coy_file_writer_close(CoyFileWriter *file)
 }
 
 static inline size 
+coy_file_slurp(char const *filename, size buf_size, byte *buffer)
+{
+    size file_size = coy_file_size(filename);
+    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
+
+    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
+                            GENERIC_READ,          // [in]           DWORD                 dwDesiredAccess,
+                            FILE_SHARE_READ,       // [in]           DWORD                 dwShareMode,
+                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            OPEN_EXISTING,         // [in]           DWORD                 dwCreationDisposition,
+                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
+                            NULL);                 // [in, optional] HANDLE                hTemplateFile
+
+    StopIf(fh == INVALID_HANDLE_VALUE, goto ERR_RETURN);
+    
+    size space_available = buf_size;
+
+    DWORD nbytes_read = 0;
+    BOOL success =  ReadFile(fh,                    //  [in]                HANDLE       hFile,
+                             buffer,                //  [out]               LPVOID       lpBuffer,
+                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
+                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
+
+    StopIf(!success, goto ERR_RETURN);
+
+    return (size)nbytes_read;
+
+ERR_RETURN:
+    return -1;
+}
+
+static inline size 
 coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer)
 {
     StopIf(!file->valid, goto ERR_RETURN);
@@ -189,8 +222,6 @@ coy_file_open_read(char const *filename)
 static inline size 
 coy_file_fill_buffer(CoyFileReader *file)
 {
-    _Static_assert(sizeof(ssize_t) <= sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
-
     if(file->bytes_remaining > 0)
     {
         /* Move remaining data to the front of the buffer */
@@ -209,7 +240,7 @@ coy_file_fill_buffer(CoyFileReader *file)
 
     StopIf(!success, goto ERR_RETURN);
 
-    file->bytes_remaining += total_num_bytes_read;
+    file->bytes_remaining += nbytes_read;
 
     return (size)nbytes_read;
 
@@ -306,7 +337,7 @@ coy_memmap_read_only(char const *filename)
 CLOSE_FMH_AND_ERR:
     CloseHandle(fmh);
 CLOSE_CF_AND_ERR:
-    coy_file_close(&cf);
+    coy_file_reader_close(&cf);
 ERR_RETURN:
     return (CoyMemMappedFile) { .valid = false };
 }
@@ -321,7 +352,7 @@ coy_memmap_close(CoyMemMappedFile *file)
     /*BOOL success = */UnmapViewOfFile(data);
     CloseHandle(fmh);
     CoyFileReader cf = { .handle = fh, .valid = true };
-    coy_file_close(&cf);
+    coy_file_reader_close(&cf);
 
     file->valid = false;
 
