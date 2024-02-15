@@ -109,16 +109,53 @@ coy_file_append(char const *filename)
 }
 
 static inline size 
-coy_file_write(CoyFileWriter *file, size nbytes_to_write, byte const *buffer)
+coy_file_writer_flush(CoyFileWriter *file)
 {
     StopIf(!file->valid, goto ERR_RETURN);
 
     _Static_assert(sizeof(ssize_t) == sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
-    Assert(nbytes_to_write >= 0);
 
-    ssize_t num_bytes_written = write((int)file->handle, buffer, nbytes_to_write);
-    StopIf(num_bytes_written < 0, goto ERR_RETURN);
-    return (size) num_bytes_written;
+    if(file->buf_cursor > 0)
+    {
+        ssize_t num_bytes_written = write((int)file->handle, file->buffer, file->buf_cursor);
+        StopIf(num_bytes_written != file->buf_cursor, goto ERR_RETURN);
+        file->buf_cursor = 0;
+        return (size) num_bytes_written;
+    }
+
+    return 0;
+
+ERR_RETURN:
+    return -1;
+}
+
+static inline size 
+coy_file_write(CoyFileWriter *file, size nbytes_to_write, byte const *buffer)
+{
+    Assert(nbytes_to_write >= 0);
+    size num_bytes_written = 0;
+
+    /* Check if we need to flush the buffer */
+    if(nbytes_to_write > (COY_FILE_WRITER_BUF_SIZE - file->buf_cursor))
+    {
+        num_bytes_written = coy_file_writer_flush(file);
+        StopIf(num_bytes_written < 0, goto ERR_RETURN);
+    }
+
+    /* For "small" writes, buffer the data. */
+    if(nbytes_to_write < COY_FILE_WRITER_BUF_SIZE)
+    {
+        memcpy(file->buffer + file->buf_cursor, buffer, nbytes_to_write);
+        file->buf_cursor += nbytes_to_write;
+        return nbytes_to_write;
+    }
+    else
+    {
+        /* For large writes, just skip several trips through the buffer. */
+        num_bytes_written = write((int)file->handle, buffer, nbytes_to_write);
+        StopIf(num_bytes_written < 0, goto ERR_RETURN);
+        return (size) num_bytes_written;
+    }
 
 ERR_RETURN:
     return -1;
@@ -127,6 +164,8 @@ ERR_RETURN:
 static inline void 
 coy_file_writer_close(CoyFileWriter *file)
 {
+    /* TODO: Rework API to return error if the flush fails. */
+    coy_file_writer_flush(file);
     /* int err_code = */ close((int)file->handle);
     file->valid = false;
 }

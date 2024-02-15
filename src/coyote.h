@@ -147,14 +147,18 @@ static inline void coy_file_reader_close(CoyFileReader *file); /* Must set valid
 static inline size coy_file_slurp(char const *filename, size buf_size, byte *buffer);
 
 
+#define COY_FILE_WRITER_BUF_SIZE COY_KiB(32)
 typedef struct
 {
     iptr handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
+    byte buffer[COY_FILE_WRITER_BUF_SIZE];
+    size buf_cursor;
     bool valid;  // error indicator
 } CoyFileWriter;
 
 static inline CoyFileWriter coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
 static inline CoyFileWriter coy_file_append(char const *filename); // Create file if it doesn't exist yet, otherwise append.
+static inline size coy_file_writer_flush(CoyFileWriter *file); /* Close will also do this, only use if ALL you need is flush */
 static inline void coy_file_writer_close(CoyFileWriter *file); /* Must set valid member to false on success or failure! */
 
 static inline size coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer); // return nbytes written or -1 on error
