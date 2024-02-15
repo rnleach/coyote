@@ -277,9 +277,10 @@ typedef struct
     CoyMutex mtx;
     CoyCondVar space_available;
     CoyCondVar data_available;
-    i32 num_producers;
-    i32 num_consumers;
-    bool finished;
+    i32 num_producers_started;
+    i32 num_producers_finished;
+    i32 num_consumers_started;
+    i32 num_consumers_finished;
     void *buf[COYOTE_CHANNEL_SIZE];
 } CoyChannel;
 
@@ -290,7 +291,6 @@ static inline void coy_channel_wait_until_ready_to_send(CoyChannel *chan);
 static inline void coy_channel_register_sender(CoyChannel *chan);
 static inline void coy_channel_register_receiver(CoyChannel *chan);
 static inline void coy_channel_done_sending(CoyChannel *chan);
-static inline void coy_channel_finish(CoyChannel *chan);
 static inline void coy_channel_done_receiving(CoyChannel *chan);
 static inline bool coy_channel_send(CoyChannel *chan, void *data);
 static inline bool coy_channel_receive(CoyChannel *chan, void **out);
@@ -615,9 +615,10 @@ coy_channel_create(void)
             .mtx = coy_mutex_create(),
             .space_available = coy_condvar_create(),
             .data_available = coy_condvar_create(),
-            .num_producers = 0,
-            .num_consumers = 0,
-            .finished = false,
+            .num_producers_started = 0,
+            .num_producers_finished = 0,
+            .num_consumers_started = 0,
+            .num_consumers_finished = 0,
             .buf = {0},
         };
 
@@ -631,8 +632,8 @@ coy_channel_create(void)
 static inline void 
 coy_channel_destroy(CoyChannel *chan, void(*free_func)(void *ptr, void *ctx), void *free_ctx)
 {
-    Assert(chan->num_producers == 0);
-    Assert(chan->num_consumers == 0);
+    Assert(chan->num_producers_started == chan->num_producers_finished);
+    Assert(chan->num_consumers_started == chan->num_consumers_finished);
     if(free_func)
     {
         while(chan->count > 0)
@@ -657,7 +658,7 @@ coy_channel_wait_until_ready_to_receive(CoyChannel *chan)
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
-    while(chan->num_producers == 0 && chan->count == 0 && !chan->finished) 
+    while(chan->num_producers_started == 0) 
     {
         coy_condvar_sleep(&chan->data_available, &chan->mtx); 
     }
@@ -671,7 +672,7 @@ coy_channel_wait_until_ready_to_send(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    while(chan->num_consumers == 0) { coy_condvar_sleep(&chan->space_available, &chan->mtx); }
+    while(chan->num_consumers_started == 0) { coy_condvar_sleep(&chan->space_available, &chan->mtx); }
     success = coy_mutex_unlock(&chan->mtx);
     Assert(success);
 }
@@ -681,9 +682,9 @@ coy_channel_register_sender(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    chan->num_producers += 1;
+    chan->num_producers_started += 1;
 
-    if(chan->num_producers == 1)
+    if(chan->num_producers_started == 1)
     {
         /* Broadcast here so any threads blocked on coy_channel_wait_until_ready_to_receive can progress. If the number of
          * producers is greater than 1, then this was already sent.
@@ -702,9 +703,9 @@ coy_channel_register_receiver(CoyChannel *chan)
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
-    chan->num_consumers += 1;
+    chan->num_consumers_started += 1;
 
-    if(chan->num_consumers == 1)
+    if(chan->num_consumers_started == 1)
     {
         /* Broadcast here so any threads blocked on coy_channel_wait_until_ready_to_send can progress. If the number of
          * consumers is greater than 1, then this was already sent.
@@ -722,14 +723,15 @@ coy_channel_done_sending(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    Assert(chan->num_producers > 0);
+    Assert(chan->num_producers_started > 0);
 
-    chan->num_producers -= 1;
+    chan->num_producers_finished += 1;
 
-    if(chan->num_producers == 0)
+    if(chan->num_producers_started == chan->num_producers_finished)
     {
         /* Broadcast in case any thread is waiting for data to become available that won't because there are no more
-         * producers. This will let them check the number of producers and realize nothing is coming so they too can quit.
+         * producers running. This will let them check the number of producers started/finished and realize nothing is
+         * coming so they too can quit.
          */
         success = coy_condvar_wake_all(&chan->data_available);
         Assert(success);
@@ -746,35 +748,19 @@ coy_channel_done_sending(CoyChannel *chan)
 }
 
 static inline void 
-coy_channel_finish(CoyChannel *chan)
-{
-    bool success = coy_mutex_lock(&chan->mtx);
-    Assert(success);
-    Assert(chan->num_producers == 0);
-
-    chan->finished = true;
-
-    success = coy_condvar_wake_all(&chan->data_available);
-    Assert(success);
-
-    success = coy_mutex_unlock(&chan->mtx);
-    Assert(success);
-}
-
-static inline void 
 coy_channel_done_receiving(CoyChannel *chan)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    Assert(chan->num_consumers > 0);
+    Assert(chan->num_consumers_started > 0);
 
-    chan->num_consumers -= 1;
+    chan->num_consumers_finished += 1;
 
-    if(chan->num_consumers == 0)
+    if(chan->num_consumers_started == chan->num_consumers_finished)
     {
         /* Broadcast in case any thread is waiting to send data that they will never be able to send because there are no
-         * consumers to receive it! This will let them check the number of consumers and realize space will never become
-         * available.
+         * consumers to receive it! This will let them check the number of consumers started/finished and realize space 
+         * will never become available.
          */
         success = coy_condvar_wake_all(&chan->space_available);
         Assert(success);
@@ -795,23 +781,23 @@ coy_channel_send(CoyChannel *chan, void *data)
 {
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
-    Assert(chan->num_producers > 0);
+    Assert(chan->num_producers_started > 0);
 
-    while(chan->count == COYOTE_CHANNEL_SIZE && chan->num_consumers > 0)
+    while(chan->count == COYOTE_CHANNEL_SIZE && chan->num_consumers_started != chan->num_consumers_finished)
     {
         success = coy_condvar_sleep(&chan->space_available, &chan->mtx);
         Assert(success);
     }
 
-    Assert(chan->count < COYOTE_CHANNEL_SIZE || chan->num_consumers == 0);
+    Assert(chan->count < COYOTE_CHANNEL_SIZE || chan->num_consumers_started == chan->num_consumers_finished);
 
-    if(chan->num_consumers > 0)
+    if(chan->num_consumers_started > chan->num_consumers_finished)
     {
         chan->buf[(chan->tail) % COYOTE_CHANNEL_SIZE] = data;
         chan->tail += 1;
         chan->count += 1;
 
-        /* If the count was increased to , then someone may have been waiting to be notified! */
+        /* If the count was increased to 1, then someone may have been waiting to be notified! */
         if(chan->count == 1)
         {
             success = coy_condvar_wake(&chan->data_available);
@@ -837,13 +823,13 @@ coy_channel_receive(CoyChannel *chan, void **out)
     bool success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
-    while(chan->count == 0 && chan->num_producers > 0)
+    while(chan->count == 0 && chan->num_producers_started > chan->num_producers_finished)
     {
         success = coy_condvar_sleep(&chan->data_available, &chan->mtx);
         Assert(success);
     }
 
-    Assert(chan->count > 0 || chan->num_producers == 0);
+    Assert(chan->count > 0 || chan->num_producers_started == chan->num_producers_finished);
 
     *out = NULL;
     if(chan->count > 0)
@@ -854,7 +840,7 @@ coy_channel_receive(CoyChannel *chan, void **out)
     }
     else
     {
-        /* Nothing more is coming, to get here num_producers must be 0. */
+        /* Nothing more is coming, to get here num_producers_started must num_producers_finished. */
         success = coy_mutex_unlock(&chan->mtx);
         Assert(success);
         return false;
