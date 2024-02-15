@@ -187,20 +187,55 @@ coy_file_open_read(char const *filename)
 }
 
 static inline size 
-coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
+coy_file_fill_buffer(CoyFileReader *file)
 {
-    StopIf(!file->valid, goto ERR_RETURN);
+    _Static_assert(sizeof(ssize_t) <= sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
+
+    if(file->bytes_remaining > 0)
+    {
+        /* Move remaining data to the front of the buffer */
+        memmove(file->buffer, file->buffer + file->buf_cursor, file->bytes_remaining);
+        file->buf_cursor = 0;
+    }
+
+    size space_available = COY_FILE_READER_BUF_SIZE - file->bytes_remaining;
 
     DWORD nbytes_read = 0;
     BOOL success =  ReadFile((HANDLE) file->handle, //  [in]                HANDLE       hFile,
-                             buffer,                //  [out]               LPVOID       lpBuffer,
-                             buf_size,              //  [in]                DWORD        nNumberOfBytesToRead,
+                             file->buffer,          //  [out]               LPVOID       lpBuffer,
+                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
                              &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
                              NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
     StopIf(!success, goto ERR_RETURN);
+
+    file->bytes_remaining += total_num_bytes_read;
+
     return (size)nbytes_read;
-    
+
+ERR_RETURN:
+    return -1;
+}
+
+static inline size 
+coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
+{
+    Assert(buf_size > 0);
+    StopIf(!file->valid, goto ERR_RETURN);
+
+    if(buf_size > file->bytes_remaining)
+    {
+        size bytes_read = coy_file_fill_buffer(file);
+        StopIf(bytes_read < 0, goto ERR_RETURN);
+    }
+
+    size size_to_copy = buf_size > file->bytes_remaining ? file->bytes_remaining : buf_size;
+    memcpy(buffer, file->buffer + file->buf_cursor, size_to_copy);
+    file->buf_cursor += size_to_copy;
+    file->bytes_remaining -= size_to_copy;
+
+    return size_to_copy;
+
 ERR_RETURN:
     return -1;
 }

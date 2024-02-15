@@ -50,6 +50,7 @@ typedef int64_t     i64;
 
 void *memset(void *buffer, int val, size_t num_bytes);
 void *memcpy(void *dest, void const *src, size_t num_bytes);
+void *memmove(void *dest, void const *src, size_t num_bytes);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                       Error Handling
@@ -86,6 +87,32 @@ void *memcpy(void *dest, void const *src, size_t num_bytes);
 static inline u64 coy_time_now(void); // Get the current system time in seconds since midnight, Jan. 1 1970.
 
 /*---------------------------------------------------------------------------------------------------------------------------
+ *                                                         Memory
+ *---------------------------------------------------------------------------------------------------------------------------
+ * Request big chunks of memory from the OS, bypassing the CRT. The system may round up your requested memory size, but it
+ * will return an error instead of rounding down if there isn't enough memory.
+ */
+typedef struct
+{
+    void *mem;
+    size size;
+    bool valid;
+} CoyMemoryBlock;
+
+#define COY_KB(a) ((a) * INT64_C(1000))
+#define COY_MB(a) (COY_KB(a) * INT64_C(1000))
+#define COY_GB(a) (COY_MB(a) * INT64_C(1000))
+#define COY_TB(a) (COY_GB(a) * INT64_C(1000))
+
+#define COY_KiB(a) ((a) * (1024))
+#define COY_MiB(a) (COY_KiB(a) * INT64_C(1024))
+#define COY_GiB(a) (COY_MiB(a) * INT64_C(1024))
+#define COY_TiB(a) (COY_GiB(a) * INT64_C(1024))
+
+static inline CoyMemoryBlock coy_memory_allocate(size minimum_num_bytes);
+static inline void coy_memory_free(CoyMemoryBlock *mem);
+
+/*---------------------------------------------------------------------------------------------------------------------------
  *                                                     Files & Paths
  *---------------------------------------------------------------------------------------------------------------------------
  * Check the 'valid' member of the structs to check for errors!
@@ -96,9 +123,13 @@ static inline bool coy_path_append(size buf_len, char path_buffer[], char const 
 
 static inline size coy_file_size(char const *filename); /* size of a file in bytes, -1 on error. */
 
+#define COY_FILE_READER_BUF_SIZE COY_KiB(32)
 typedef struct
 {
     iptr handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
+    byte buffer[COY_FILE_READER_BUF_SIZE];
+    size buf_cursor;
+    size bytes_remaining;
     bool valid;  // error indicator
 } CoyFileReader;
 
@@ -185,32 +216,6 @@ typedef struct
 } CoyTerminalSize;
 
 static inline CoyTerminalSize coy_get_terminal_size(void);
-
-/*---------------------------------------------------------------------------------------------------------------------------
- *                                                         Memory
- *---------------------------------------------------------------------------------------------------------------------------
- * Request big chunks of memory from the OS, bypassing the CRT. The system may round up your requested memory size, but it
- * will return an error instead of rounding down if there isn't enough memory.
- */
-typedef struct
-{
-    void *mem;
-    size size;
-    bool valid;
-} CoyMemoryBlock;
-
-#define COY_KB(a) ((a) * INT64_C(1000))
-#define COY_MB(a) (COY_KB(a) * INT64_C(1000))
-#define COY_GB(a) (COY_MB(a) * INT64_C(1000))
-#define COY_TB(a) (COY_GB(a) * INT64_C(1000))
-
-#define COY_KiB(a) ((a) * (1024))
-#define COY_MiB(a) (COY_KiB(a) * INT64_C(1024))
-#define COY_GiB(a) (COY_MiB(a) * INT64_C(1024))
-#define COY_TiB(a) (COY_GiB(a) * INT64_C(1024))
-
-static inline CoyMemoryBlock coy_memory_allocate(size minimum_num_bytes);
-static inline void coy_memory_free(CoyMemoryBlock *mem);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                        Multi-threading & Syncronization
@@ -417,25 +422,6 @@ coy_null_term_strings_equal(char const *left, char const *right)
     }
 
     return true;
-}
-
-static inline size 
-coy_file_slurp(char const *filename, size buf_size, byte *buffer)
-{
-    size file_size = coy_file_size(filename);
-    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
-
-    CoyFileReader file = coy_file_open_read(filename);
-    StopIf(!file.valid, goto ERR_RETURN);
-
-    size num_bytes = coy_file_read(&file, buf_size, buffer);
-    coy_file_reader_close(&file);
-    StopIf(num_bytes != file_size, goto ERR_RETURN);
-
-    return num_bytes;
-
-ERR_RETURN:
-    return -1;
 }
 
 static inline bool 

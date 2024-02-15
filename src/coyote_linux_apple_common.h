@@ -131,6 +131,37 @@ coy_file_writer_close(CoyFileWriter *file)
     file->valid = false;
 }
 
+static inline size 
+coy_file_slurp(char const *filename, size buf_size, byte *buffer)
+{
+    size file_size = coy_file_size(filename);
+    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
+
+    int fd = open( filename, // char const *pathname
+                   O_RDONLY, // Read only
+                   0);       // No mode information needed.
+
+    StopIf(fd < 0, goto ERR_RETURN);
+    
+    size space_available = buf_size;
+    size num_bytes_read = 0;
+    size total_num_bytes_read = 0;
+    do
+    {
+        num_bytes_read = read(fd, buffer + total_num_bytes_read, space_available);
+        space_available -= num_bytes_read;
+        total_num_bytes_read += num_bytes_read;
+
+        StopIf(num_bytes_read < 0, goto ERR_RETURN);
+
+    } while(space_available && num_bytes_read);
+
+    return (size) total_num_bytes_read;
+
+ERR_RETURN:
+    return -1;
+}
+
 static inline CoyFileReader 
 coy_file_open_read(char const *filename)
 {
@@ -149,20 +180,24 @@ coy_file_open_read(char const *filename)
 }
 
 static inline size 
-coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
+coy_file_fill_buffer(CoyFileReader *file)
 {
     _Static_assert(sizeof(ssize_t) <= sizeof(size), "oh come on people. ssize_t != intptr_t!? Really!");
-    Assert(buf_size > 0);
 
-    StopIf(!file->valid, goto ERR_RETURN);
-
-    size bytes_remaining = buf_size;
-    ssize_t num_bytes_read = 0;
-    ssize_t total_num_bytes_read = 0;
-    while(bytes_remaining)
+    if(file->bytes_remaining > 0)
     {
-        num_bytes_read = read((int)file->handle, buffer + total_num_bytes_read, bytes_remaining);
-        bytes_remaining -= num_bytes_read;
+        /* Move remaining data to the front of the buffer */
+        memmove(file->buffer, file->buffer + file->buf_cursor, file->bytes_remaining);
+        file->buf_cursor = 0;
+    }
+
+    size space_available = COY_FILE_READER_BUF_SIZE - file->bytes_remaining;
+    size num_bytes_read = 0;
+    size total_num_bytes_read = 0;
+    while(space_available)
+    {
+        num_bytes_read = read((int)file->handle, file->buffer + file->bytes_remaining + total_num_bytes_read, space_available);
+        space_available -= num_bytes_read;
         total_num_bytes_read += num_bytes_read;
 
         StopIf(num_bytes_read < 0, goto ERR_RETURN);
@@ -170,7 +205,32 @@ coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
         if(num_bytes_read == 0) { break; }
     }
 
+    file->bytes_remaining += total_num_bytes_read;
+
     return (size) total_num_bytes_read;
+
+ERR_RETURN:
+    return -1;
+}
+
+static inline size 
+coy_file_read(CoyFileReader *file, size buf_size, byte *buffer)
+{
+    Assert(buf_size > 0);
+    StopIf(!file->valid, goto ERR_RETURN);
+
+    if(buf_size > file->bytes_remaining)
+    {
+        size bytes_read = coy_file_fill_buffer(file);
+        StopIf(bytes_read < 0, goto ERR_RETURN);
+    }
+
+    size size_to_copy = buf_size > file->bytes_remaining ? file->bytes_remaining : buf_size;
+    memcpy(buffer, file->buffer + file->buf_cursor, size_to_copy);
+    file->buf_cursor += size_to_copy;
+    file->bytes_remaining -= size_to_copy;
+
+    return size_to_copy;
 
 ERR_RETURN:
     return -1;

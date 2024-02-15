@@ -122,6 +122,7 @@ main(int argc, char *argv[])
     StopIf(!coyote->valid, fprintf(stderr, "Error opening coyote.h for output\n"); return 1);
 
     size coyote_wrote = coy_file_write(coyote, oi, finished_lib);
+    Assert(coyote_wrote == oi);
 
     coy_file_writer_close(coyote);
 }
