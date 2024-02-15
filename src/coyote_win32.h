@@ -135,9 +135,40 @@ coy_file_append(char const *filename)
     }
 }
 
+static inline size 
+coy_file_writer_flush(CoyFileWriter *file)
+{
+    StopIf(!file->valid, goto ERR_RETURN);
+
+    if(file->buf_cursor)
+    {
+        DWORD nbytes_written = 0;
+        BOOL success = WriteFile(
+            (HANDLE)file->handle,     // [in]                HANDLE       hFile,
+            file->buffer,             // [in]                LPCVOID      lpBuffer,
+            file->buf_cursor,         // [in]                DWORD        nNumberOfBytesToWrite,
+            &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
+            NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
+        );
+
+        StopIf(!success || file->buf_cursor != (size)nbytes_written, goto ERR_RETURN);
+
+        file->buf_cursor = 0;
+
+        return (size)nbytes_written;
+    }
+
+    return 0;
+
+ERR_RETURN:
+    return -1;
+}
+
 static inline void 
 coy_file_writer_close(CoyFileWriter *file)
 {
+    /* TODO change API to return size so I can return an error if the flush fails. */
+    coy_file_writer_flush(file);
     CloseHandle((HANDLE)file->handle);
     file->valid = false;
 
@@ -145,55 +176,38 @@ coy_file_writer_close(CoyFileWriter *file)
 }
 
 static inline size 
-coy_file_slurp(char const *filename, size buf_size, byte *buffer)
-{
-    size file_size = coy_file_size(filename);
-    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
-
-    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
-                            GENERIC_READ,          // [in]           DWORD                 dwDesiredAccess,
-                            FILE_SHARE_READ,       // [in]           DWORD                 dwShareMode,
-                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-                            OPEN_EXISTING,         // [in]           DWORD                 dwCreationDisposition,
-                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
-                            NULL);                 // [in, optional] HANDLE                hTemplateFile
-
-    StopIf(fh == INVALID_HANDLE_VALUE, goto ERR_RETURN);
-    
-    size space_available = buf_size;
-
-    DWORD nbytes_read = 0;
-    BOOL success =  ReadFile(fh,                    //  [in]                HANDLE       hFile,
-                             buffer,                //  [out]               LPVOID       lpBuffer,
-                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
-                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
-                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
-
-    StopIf(!success, goto ERR_RETURN);
-
-    return (size)nbytes_read;
-
-ERR_RETURN:
-    return -1;
-}
-
-static inline size 
 coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer)
 {
-    StopIf(!file->valid, goto ERR_RETURN);
+    /* check to see if the buffer needs flushed. */
+    if(file->buf_cursor + nbytes_write > COY_FILE_WRITER_BUF_SIZE)
+    {
+        size bytes_flushed = coy_file_writer_flush(file);
+        StopIf(bytes_flushed < 0, goto ERR_RETURN);
+    }
 
-    DWORD nbytes_written = 0;
-    BOOL success = WriteFile(
-        (HANDLE)file->handle,     // [in]                HANDLE       hFile,
-        buffer,                   // [in]                LPCVOID      lpBuffer,
-        nbytes_write,             // [in]                DWORD        nNumberOfBytesToWrite,
-        &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
-        NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
-    );
+    if(nbytes_write < COY_FILE_WRITER_BUF_SIZE)
+    {
+        /* Dump small writes into the buffer. */
+        memcpy(file->buffer + file->buf_cursor, buffer, nbytes_write);
+        file->buf_cursor += nbytes_write;
+        return nbytes_write;
+    }
+    else
+    {
+        /* Large writes bypass the buffer and go straight to the file. */
+        DWORD nbytes_written = 0;
+        BOOL success = WriteFile(
+            (HANDLE)file->handle,     // [in]                HANDLE       hFile,
+            buffer,                   // [in]                LPCVOID      lpBuffer,
+            nbytes_write,             // [in]                DWORD        nNumberOfBytesToWrite,
+            &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
+            NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
+        );
 
-    StopIf(!success, goto ERR_RETURN);
-    return (size)nbytes_written;
-    
+        StopIf(!success, goto ERR_RETURN);
+        return (size)nbytes_written;
+    }
+
 ERR_RETURN:
     return -1;
 }
@@ -278,6 +292,39 @@ coy_file_reader_close(CoyFileReader *file)
     file->valid = false;
 
     return;
+}
+
+static inline size 
+coy_file_slurp(char const *filename, size buf_size, byte *buffer)
+{
+    size file_size = coy_file_size(filename);
+    StopIf(file_size < 1 || file_size > buf_size, goto ERR_RETURN);
+
+    HANDLE fh = CreateFileA(filename,              // [in]           LPCSTR                lpFileName,
+                            GENERIC_READ,          // [in]           DWORD                 dwDesiredAccess,
+                            FILE_SHARE_READ,       // [in]           DWORD                 dwShareMode,
+                            NULL,                  // [in, optional] LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+                            OPEN_EXISTING,         // [in]           DWORD                 dwCreationDisposition,
+                            FILE_ATTRIBUTE_NORMAL, // [in]           DWORD                 dwFlagsAndAttributes,
+                            NULL);                 // [in, optional] HANDLE                hTemplateFile
+
+    StopIf(fh == INVALID_HANDLE_VALUE, goto ERR_RETURN);
+    
+    size space_available = buf_size;
+
+    DWORD nbytes_read = 0;
+    BOOL success =  ReadFile(fh,                    //  [in]                HANDLE       hFile,
+                             buffer,                //  [out]               LPVOID       lpBuffer,
+                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
+                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
+
+    StopIf(!success, goto ERR_RETURN);
+
+    return (size)nbytes_read;
+
+ERR_RETURN:
+    return -1;
 }
 
 static inline size 

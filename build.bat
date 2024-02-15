@@ -44,7 +44,7 @@ rem
 
 @echo "Build"
 cd build
-cl /std:c11 /TC /utf-8 /nologo build.c
+cl /std:c11 /TC /utf-8 /nologo %flags% build.c
 build.exe
 cd ..
 cl /std:c11 /TC /utf-8 /nologo %flags% tests\test.c
