@@ -240,8 +240,8 @@ coy_file_fill_buffer(CoyFileReader *file)
     {
         /* Move remaining data to the front of the buffer */
         memmove(file->buffer, file->buffer + file->buf_cursor, file->bytes_remaining);
-        file->buf_cursor = 0;
     }
+    file->buf_cursor = 0;
 
     size space_available = COY_FILE_READER_BUF_SIZE - file->bytes_remaining;
 
