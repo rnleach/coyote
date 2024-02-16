@@ -246,11 +246,11 @@ coy_file_fill_buffer(CoyFileReader *file)
     size space_available = COY_FILE_READER_BUF_SIZE - file->bytes_remaining;
 
     DWORD nbytes_read = 0;
-    BOOL success =  ReadFile((HANDLE) file->handle, //  [in]                HANDLE       hFile,
-                             file->buffer,          //  [out]               LPVOID       lpBuffer,
-                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
-                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
-                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
+    BOOL success =  ReadFile((HANDLE) file->handle,                //  [in]                HANDLE       hFile,
+                             file->buffer + file->bytes_remaining, //  [out]               LPVOID       lpBuffer,
+                             space_available,                      //  [in]                DWORD        nNumberOfBytesToRead,
+                             &nbytes_read,                         //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+                             NULL);                                //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
     StopIf(!success, goto ERR_RETURN);
 
