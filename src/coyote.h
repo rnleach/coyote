@@ -800,7 +800,7 @@ coy_channel_send(CoyChannel *chan, void *data)
         /* If the count was increased to 1, then someone may have been waiting to be notified! */
         if(chan->count == 1)
         {
-            success = coy_condvar_wake(&chan->data_available);
+            success = coy_condvar_wake_all(&chan->data_available);
             Assert(success);
         }
 
@@ -849,7 +849,7 @@ coy_channel_receive(CoyChannel *chan, void **out)
     /* If the queue was full before, send a signal to let other's know there is room now. */
     if( chan->count + 1 == COYOTE_CHANNEL_SIZE)
     {
-        success = coy_condvar_wake(&chan->space_available);
+        success = coy_condvar_wake_all(&chan->space_available);
         Assert(success);
     }
     
