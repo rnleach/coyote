@@ -19,7 +19,7 @@ test_file_name_iterator(void)
     const char *fname = coy_file_name_iterator_next(iter);
     while(fname)
     {
-        bool found = false;
+        b32 found = false;
         char const *f = 0;
         for(int i = 0; i < sizeof(src_files) / sizeof(src_files[0]); ++i)
         {
