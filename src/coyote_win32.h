@@ -24,7 +24,7 @@ coy_time_now(void)
     GetSystemTime(&now_st);
 
     union WinTimePun now = {0};
-    bool success = SystemTimeToFileTime(&now_st, &now.ft);
+    b32 success = SystemTimeToFileTime(&now_st, &now.ft);
     StopIf(!success, goto ERR_RETURN);
 
     SYSTEMTIME epoch_st = { 
@@ -50,7 +50,7 @@ ERR_RETURN:
 
 static char const coy_path_sep = '\\';
 
-static inline bool 
+static inline b32 
 coy_path_append(size buf_len, char path_buffer[], char const *new_path)
 {
     // Find first '\0'
@@ -440,7 +440,7 @@ coy_file_name_iterator_next(CoyFileNameIter *cfni)
     {
         // The first call to coy_file_name_iterator_open() should have populated
         char const *fname = coy_file_name_iterator_data.cFileName;
-        bool found = false;
+        b32 found = false;
         while(!found)
         {
             if(!(coy_file_name_iterator_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
@@ -571,7 +571,7 @@ coy_thread_func_internal(void *thread_params)
 }
 
 
-static inline bool
+static inline b32
 coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
 {
     thrd->func = func;
@@ -599,7 +599,7 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
     return true;
 }
 
-static inline bool
+static inline b32
 coy_thread_join(CoyThread *thread)
 {
     HANDLE *h = (HANDLE *)&thread->handle[0];
@@ -628,14 +628,14 @@ coy_mutex_create()
     return mutex;
 }
 
-static inline bool 
+static inline b32 
 coy_mutex_lock(CoyMutex *mutex)
 {
     EnterCriticalSection((CRITICAL_SECTION *)&mutex->mutex[0]);
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_mutex_unlock(CoyMutex *mutex)
 {
     LeaveCriticalSection((CRITICAL_SECTION *)&mutex->mutex[0]);
@@ -662,20 +662,20 @@ coy_condvar_create(void)
     return cv;
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx)
 {
     return 0 != SleepConditionVariableCS((CONDITION_VARIABLE *)&cv->cond_var, (CRITICAL_SECTION *)&mtx->mutex[0], INFINITE);
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_wake(CoyCondVar *cv)
 {
     WakeConditionVariable((CONDITION_VARIABLE *)&cv->cond_var);
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_wake_all(CoyCondVar *cv)
 {
     WakeAllConditionVariable((CONDITION_VARIABLE *)&cv->cond_var);

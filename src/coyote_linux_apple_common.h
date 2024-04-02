@@ -32,7 +32,7 @@ ERR_RETURN:
 
 static char const coy_path_sep = '/';
 
-static inline bool 
+static inline b32 
 coy_path_append(size buf_len, char path_buffer[], char const *new_path)
 {
     // Find first '\0'
@@ -410,7 +410,7 @@ coy_thread_func_internal(void *thread_params)
     return NULL;
 }
 
-static inline bool
+static inline b32
 coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
 {
     *thrd = (CoyThread){ .func=func, .thread_data=thread_data };
@@ -421,7 +421,7 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
     return 0 == pthread_create((pthread_t *)&thrd->handle, NULL, coy_thread_func_internal, thrd);
 }
 
-static inline bool
+static inline b32
 coy_thread_join(CoyThread *thread)
 {
 
@@ -458,13 +458,13 @@ coy_mutex_create()
     return mtx;
 }
 
-static inline bool 
+static inline b32 
 coy_mutex_lock(CoyMutex *mutex)
 {
     return pthread_mutex_lock((pthread_mutex_t *)&mutex->mutex[0]) == 0;
 }
 
-static inline bool 
+static inline b32 
 coy_mutex_unlock(CoyMutex *mutex)
 {
     return pthread_mutex_unlock((pthread_mutex_t *)&mutex->mutex[0]) == 0;
@@ -489,19 +489,19 @@ coy_condvar_create(void)
     return cv;
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx)
 {
     return 0 == pthread_cond_wait((pthread_cond_t *)&cv->cond_var[0], (pthread_mutex_t *)&mtx->mutex[0]);
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_wake(CoyCondVar *cv)
 {
     return 0 == pthread_cond_signal((pthread_cond_t *)&cv->cond_var[0]);
 }
 
-static inline bool 
+static inline b32 
 coy_condvar_wake_all(CoyCondVar *cv)
 {
     return 0 == pthread_cond_broadcast((pthread_cond_t *)&cv->cond_var[0]);
