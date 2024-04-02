@@ -8,16 +8,16 @@
  * Define simpler types.
  *-------------------------------------------------------------------------------------------------------------------------*/
 
-// stdbool.h
-#ifndef bool
-  #define bool int
-  #define false 0
-  #define true 1
-#endif
-
 /* Other libraries I may have already included may use these exact definitions too. */
 #ifndef _TYPE_ALIASES_
 #define _TYPE_ALIASES_
+
+typedef int32_t     b32;
+#ifndef false
+   #define false 0
+   #define true  1
+#endif
+
 typedef char       byte;
 typedef ptrdiff_t  size;
 typedef size_t    usize;
@@ -92,7 +92,7 @@ typedef struct
 {
     void *mem;
     size size;
-    bool valid;
+    b32 valid;
 } CoyMemoryBlock;
 
 #define COY_KB(a) ((a) * INT64_C(1000))
@@ -115,7 +115,7 @@ static inline void coy_memory_free(CoyMemoryBlock *mem);
  */
 
 // Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
-static inline bool coy_path_append(size buf_len, char path_buffer[], char const *new_path);
+static inline b32 coy_path_append(size buf_len, char path_buffer[], char const *new_path);
 
 static inline size coy_file_size(char const *filename); /* size of a file in bytes, -1 on error. */
 
@@ -126,21 +126,21 @@ typedef struct
     byte buffer[COY_FILE_READER_BUF_SIZE];
     size buf_cursor;
     size bytes_remaining;
-    bool valid;  // error indicator
+    b32 valid;   // error indicator
 } CoyFileReader;
 
 static inline CoyFileReader coy_file_open_read(char const *filename);
 static inline size coy_file_read(CoyFileReader *file, size buf_size, byte *buffer); // return nbytes read or -1 on error
-static inline bool coy_file_read_f64(CoyFileReader *file, f64 *val);
-static inline bool coy_file_read_i8(CoyFileReader *file, i8 *val);
-static inline bool coy_file_read_i16(CoyFileReader *file, i16 *val);
-static inline bool coy_file_read_i32(CoyFileReader *file, i32 *val);
-static inline bool coy_file_read_i64(CoyFileReader *file, i64 *val);
-static inline bool coy_file_read_u8(CoyFileReader *file, u8 *val);
-static inline bool coy_file_read_u16(CoyFileReader *file, u16 *val);
-static inline bool coy_file_read_u32(CoyFileReader *file, u32 *val);
-static inline bool coy_file_read_u64(CoyFileReader *file, u64 *val);
-static inline bool coy_file_read_str(CoyFileReader *file, size *len, char *str); /* set len to buffer length, updated to actual size on return. */
+static inline b32 coy_file_read_f64(CoyFileReader *file, f64 *val);
+static inline b32 coy_file_read_i8(CoyFileReader *file, i8 *val);
+static inline b32 coy_file_read_i16(CoyFileReader *file, i16 *val);
+static inline b32 coy_file_read_i32(CoyFileReader *file, i32 *val);
+static inline b32 coy_file_read_i64(CoyFileReader *file, i64 *val);
+static inline b32 coy_file_read_u8(CoyFileReader *file, u8 *val);
+static inline b32 coy_file_read_u16(CoyFileReader *file, u16 *val);
+static inline b32 coy_file_read_u32(CoyFileReader *file, u32 *val);
+static inline b32 coy_file_read_u64(CoyFileReader *file, u64 *val);
+static inline b32 coy_file_read_str(CoyFileReader *file, size *len, char *str); /* set len to buffer length, updated to actual size on return. */
 static inline void coy_file_reader_close(CoyFileReader *file); /* Must set valid member to false on success or failure! */
 
 // return size in bytes of the loaded data or -1 on error. If buffer is too small, load nothing and return -1
@@ -153,7 +153,7 @@ typedef struct
     iptr handle; // posix returns an int and windows a HANDLE (e.g. void*), this should work for all of them.
     byte buffer[COY_FILE_WRITER_BUF_SIZE];
     size buf_cursor;
-    bool valid;  // error indicator
+    b32 valid;   // error indicator
 } CoyFileWriter;
 
 static inline CoyFileWriter coy_file_create(char const *filename); // Truncate if it already exists, otherwise create it.
@@ -162,23 +162,23 @@ static inline size coy_file_writer_flush(CoyFileWriter *file); /* Close will als
 static inline void coy_file_writer_close(CoyFileWriter *file); /* Must set valid member to false on success or failure! */
 
 static inline size coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer); // return nbytes written or -1 on error
-static inline bool coy_file_write_f64(CoyFileWriter *file, f64 val);
-static inline bool coy_file_write_i8(CoyFileWriter *file, i8 val);
-static inline bool coy_file_write_i16(CoyFileWriter *file, i16 val);
-static inline bool coy_file_write_i32(CoyFileWriter *file, i32 val);
-static inline bool coy_file_write_i64(CoyFileWriter *file, i64 val);
-static inline bool coy_file_write_u8(CoyFileWriter *file, u8 val);
-static inline bool coy_file_write_u16(CoyFileWriter *file, u16 val);
-static inline bool coy_file_write_u32(CoyFileWriter *file, u32 val);
-static inline bool coy_file_write_u64(CoyFileWriter *file, u64 val);
-static inline bool coy_file_write_str(CoyFileWriter *file, size len, char *str);
+static inline b32 coy_file_write_f64(CoyFileWriter *file, f64 val);
+static inline b32 coy_file_write_i8(CoyFileWriter *file, i8 val);
+static inline b32 coy_file_write_i16(CoyFileWriter *file, i16 val);
+static inline b32 coy_file_write_i32(CoyFileWriter *file, i32 val);
+static inline b32 coy_file_write_i64(CoyFileWriter *file, i64 val);
+static inline b32 coy_file_write_u8(CoyFileWriter *file, u8 val);
+static inline b32 coy_file_write_u16(CoyFileWriter *file, u16 val);
+static inline b32 coy_file_write_u32(CoyFileWriter *file, u32 val);
+static inline b32 coy_file_write_u64(CoyFileWriter *file, u64 val);
+static inline b32 coy_file_write_str(CoyFileWriter *file, size len, char *str);
 
 typedef struct
 {
     size size_in_bytes;     // size of the file
     byte const *data; 
     iptr _internal[2];      // implementation specific data
-    bool valid;             // error indicator
+    b32 valid;              // error indicator
 } CoyMemMappedFile;
 
 static inline CoyMemMappedFile coy_memmap_read_only(char const *filename);
@@ -196,7 +196,7 @@ typedef struct
 {
     iptr os_handle;         // for internal use only
     char const *file_extension;
-    bool valid;
+    b32 valid;
 } CoyFileNameIter;
 
 // Create an iterator. file_extension can be NULL if you want all files. Does not list directories. NOT THREADSAFE.
@@ -239,28 +239,28 @@ typedef struct
 typedef struct 
 {
     _Alignas(16) byte mutex[64];
-    bool valid;
+    b32 valid;
 } CoyMutex;
 
 typedef struct
 {
     _Alignas(16) byte cond_var[64];
-    bool valid;
+    b32 valid;
 } CoyCondVar;
 
-static inline bool coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
-static inline bool coy_thread_join(CoyThread *thread); /* Returns false if there was an error. */
+static inline b32 coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data); /* Returns NULL on failure. */
+static inline b32 coy_thread_join(CoyThread *thread); /* Returns false if there was an error. */
 static inline void coy_thread_destroy(CoyThread *thread);
 
 static inline CoyMutex coy_mutex_create(void);
-static inline bool coy_mutex_lock(CoyMutex *mutex);    /* Block, return false on failure. */
-static inline bool coy_mutex_unlock(CoyMutex *mutex);  /* Return false on failure.        */
+static inline b32 coy_mutex_lock(CoyMutex *mutex);    /* Block, return false on failure. */
+static inline b32 coy_mutex_unlock(CoyMutex *mutex);  /* Return false on failure.        */
 static inline void coy_mutex_destroy(CoyMutex *mutex); /* Must set valid member to false. */
 
 static inline CoyCondVar coy_condvar_create(void);
-static inline bool coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx);
-static inline bool coy_condvar_wake(CoyCondVar *cv);
-static inline bool coy_condvar_wake_all(CoyCondVar *cv);
+static inline b32 coy_condvar_sleep(CoyCondVar *cv, CoyMutex *mtx);
+static inline b32 coy_condvar_wake(CoyCondVar *cv);
+static inline b32 coy_condvar_wake_all(CoyCondVar *cv);
 static inline void coy_condvar_destroy(CoyCondVar *cv); /* Must set valid member to false. */
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -292,8 +292,8 @@ static inline void coy_channel_register_sender(CoyChannel *chan);
 static inline void coy_channel_register_receiver(CoyChannel *chan);
 static inline void coy_channel_done_sending(CoyChannel *chan);
 static inline void coy_channel_done_receiving(CoyChannel *chan);
-static inline bool coy_channel_send(CoyChannel *chan, void *data);
-static inline bool coy_channel_receive(CoyChannel *chan, void **out);
+static inline b32 coy_channel_send(CoyChannel *chan, void *data);
+static inline b32 coy_channel_receive(CoyChannel *chan, void **out);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                    Profiling Tools
@@ -404,7 +404,7 @@ coy_file_extension(char const *path)
 }
 
 // assumes zero terminated string returned from OS - not for general use.
-static inline bool
+static inline b32
 coy_null_term_strings_equal(char const *left, char const *right)
 {
     char const *l = left;
@@ -424,7 +424,7 @@ coy_null_term_strings_equal(char const *left, char const *right)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_f64(CoyFileWriter *file, f64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -432,7 +432,7 @@ coy_file_write_f64(CoyFileWriter *file, f64 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_i8(CoyFileWriter *file, i8 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -440,7 +440,7 @@ coy_file_write_i8(CoyFileWriter *file, i8 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_i16(CoyFileWriter *file, i16 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -448,7 +448,7 @@ coy_file_write_i16(CoyFileWriter *file, i16 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_i32(CoyFileWriter *file, i32 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -456,7 +456,7 @@ coy_file_write_i32(CoyFileWriter *file, i32 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_i64(CoyFileWriter *file, i64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -464,7 +464,7 @@ coy_file_write_i64(CoyFileWriter *file, i64 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_u8(CoyFileWriter *file, u8 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -472,7 +472,7 @@ coy_file_write_u8(CoyFileWriter *file, u8 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_u16(CoyFileWriter *file, u16 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -480,7 +480,7 @@ coy_file_write_u16(CoyFileWriter *file, u16 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_u32(CoyFileWriter *file, u32 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -488,7 +488,7 @@ coy_file_write_u32(CoyFileWriter *file, u32 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_u64(CoyFileWriter *file, u64 val)
 {
     size nbytes = coy_file_write(file, sizeof(val), (byte *)&val);
@@ -496,11 +496,11 @@ coy_file_write_u64(CoyFileWriter *file, u64 val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_write_str(CoyFileWriter *file, size len, char *str)
 {
     _Static_assert(sizeof(size) == sizeof(i64), "must not be on 64 bit!");
-    bool success = coy_file_write_i64(file, len);
+    b32 success = coy_file_write_i64(file, len);
     StopIf(!success, return false);
     if(len > 0)
     {
@@ -510,7 +510,7 @@ coy_file_write_str(CoyFileWriter *file, size len, char *str)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_f64(CoyFileReader *file, f64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -518,7 +518,7 @@ coy_file_read_f64(CoyFileReader *file, f64 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_i8(CoyFileReader *file, i8 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -526,7 +526,7 @@ coy_file_read_i8(CoyFileReader *file, i8 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_i16(CoyFileReader *file, i16 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -534,7 +534,7 @@ coy_file_read_i16(CoyFileReader *file, i16 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_i32(CoyFileReader *file, i32 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -542,7 +542,7 @@ coy_file_read_i32(CoyFileReader *file, i32 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_i64(CoyFileReader *file, i64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -550,7 +550,7 @@ coy_file_read_i64(CoyFileReader *file, i64 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_u8(CoyFileReader *file, u8 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -558,7 +558,7 @@ coy_file_read_u8(CoyFileReader *file, u8 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_u16(CoyFileReader *file, u16 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -566,7 +566,7 @@ coy_file_read_u16(CoyFileReader *file, u16 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_u32(CoyFileReader *file, u32 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -574,7 +574,7 @@ coy_file_read_u32(CoyFileReader *file, u32 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_u64(CoyFileReader *file, u64 *val)
 {
     size nbytes = coy_file_read(file, sizeof(*val), (byte *)val);
@@ -582,11 +582,11 @@ coy_file_read_u64(CoyFileReader *file, u64 *val)
     return true;
 }
 
-static inline bool 
+static inline b32 
 coy_file_read_str(CoyFileReader *file, size *len, char *str)
 {
     i64 str_len = 0;
-    bool success = coy_file_read_i64(file, &str_len);
+    b32 success = coy_file_read_i64(file, &str_len);
     StopIf(!success || str_len > *len, return false);
 
     if(str_len > 0)
@@ -655,7 +655,7 @@ coy_channel_destroy(CoyChannel *chan, void(*free_func)(void *ptr, void *ctx), vo
 static inline void 
 coy_channel_wait_until_ready_to_receive(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
     while(chan->num_producers_started == 0) 
@@ -670,7 +670,7 @@ coy_channel_wait_until_ready_to_receive(CoyChannel *chan)
 static inline void 
 coy_channel_wait_until_ready_to_send(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
     while(chan->num_consumers_started == 0) { coy_condvar_sleep(&chan->space_available, &chan->mtx); }
     success = coy_mutex_unlock(&chan->mtx);
@@ -680,7 +680,7 @@ coy_channel_wait_until_ready_to_send(CoyChannel *chan)
 static inline void 
 coy_channel_register_sender(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
     chan->num_producers_started += 1;
 
@@ -700,7 +700,7 @@ coy_channel_register_sender(CoyChannel *chan)
 static inline void 
 coy_channel_register_receiver(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
     chan->num_consumers_started += 1;
@@ -721,7 +721,7 @@ coy_channel_register_receiver(CoyChannel *chan)
 static inline void 
 coy_channel_done_sending(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
     Assert(chan->num_producers_started > 0);
 
@@ -750,7 +750,7 @@ coy_channel_done_sending(CoyChannel *chan)
 static inline void 
 coy_channel_done_receiving(CoyChannel *chan)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
     Assert(chan->num_consumers_started > 0);
 
@@ -776,10 +776,10 @@ coy_channel_done_receiving(CoyChannel *chan)
     Assert(success);
 }
 
-static inline bool 
+static inline b32 
 coy_channel_send(CoyChannel *chan, void *data)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
     Assert(chan->num_producers_started > 0);
 
@@ -817,10 +817,10 @@ coy_channel_send(CoyChannel *chan, void *data)
     }
 }
 
-static inline bool 
+static inline b32 
 coy_channel_receive(CoyChannel *chan, void **out)
 {
-    bool success = coy_mutex_lock(&chan->mtx);
+    b32 success = coy_mutex_lock(&chan->mtx);
     Assert(success);
 
     while(chan->count == 0 && chan->num_producers_started > chan->num_producers_finished)
@@ -861,7 +861,7 @@ coy_channel_receive(CoyChannel *chan, void **out)
 
 typedef struct
 {
-    bool initialized;
+    b32 initialized;
     uptr handle;
 } CoyOsMetrics;
 

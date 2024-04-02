@@ -12,7 +12,7 @@ test_file_size(void)
 {
     // Create a path to the file.
     char path_buf[1024] = {0};
-    bool success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
+    b32 success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
     Assert(success);
     success = coy_path_append(sizeof(path_buf), path_buf, "README.md");
     Assert(success);
@@ -38,7 +38,7 @@ test_file_create_write_append_open_read_close(void)
 {
     // Create a path to the file.
     char path_buf[1024] = {0};
-    bool success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
+    b32 success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
     Assert(success);
     success = coy_path_append(sizeof(path_buf), path_buf, "write_append_read_test.txt");
     Assert(success);
@@ -88,7 +88,7 @@ test_memmap_read(void)
 {
     // Create a path to the file.
     char path_buf[1024] = {0};
-    bool success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
+    b32 success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
     Assert(success);
     success = coy_path_append(sizeof(path_buf), path_buf, "README.md");
     Assert(success);
@@ -118,7 +118,7 @@ test_file_slurp(void)
 {
     // Create a path to the file.
     char path_buf[1024] = {0};
-    bool success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
+    b32 success = coy_path_append(sizeof(path_buf), path_buf, test_data_dir);
     Assert(success);
     success = coy_path_append(sizeof(path_buf), path_buf, "README.md");
     Assert(success);
