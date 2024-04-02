@@ -7,13 +7,13 @@ void *memcpy(void *dest, const void *src, size_t n);
 int memcmp (const void * ptr1, const void * ptr2, size_t num);
 void *memchr(const void *, int, size_t);
 
-static inline bool
+static inline b32
 str_eq(char const *left, char const *right, size len)
 {
     return 0 == memcmp(left, right, len);
 }
 
-static bool
+static b32
 load_file(char const *fname, size buf_size, byte *buffer, size *read)
 {
     *read = coy_file_slurp(fname, buf_size, buffer);
@@ -49,7 +49,7 @@ main(int argc, char *argv[])
 
     // Load all the files
     char const *fname = "../src/coyote.h";
-    bool success = load_file(fname, sizeof(main_buffer), main_buffer, &mb_size);
+    b32 success = load_file(fname, sizeof(main_buffer), main_buffer, &mb_size);
     StopIf(!success, return 1);
 
     char const *fname_win32 = "../src/coyote_win32.h";
