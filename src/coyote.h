@@ -73,7 +73,7 @@ void *memmove(void *dest, void const *src, size_t num_bytes);
   #ifndef NDEBUG
     #define Assert(assertion) if(!(assertion)) { HARD_EXIT; }
   #else
-    #define Assert(assertion)
+    #define Assert(assertion) (void)(assertion);
   #endif
 #endif
 
