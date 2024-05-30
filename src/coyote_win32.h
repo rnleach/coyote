@@ -319,6 +319,8 @@ coy_file_slurp(char const *filename, size buf_size, byte *buffer)
                              &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
                              NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
+    success &= CloseHandle(fh);
+
     StopIf(!success, goto ERR_RETURN);
 
     return (size)nbytes_read;
