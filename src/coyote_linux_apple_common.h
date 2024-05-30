@@ -196,6 +196,7 @@ coy_file_slurp(char const *filename, size buf_size, byte *buffer)
     } while(space_available && num_bytes_read);
 
     return (size) total_num_bytes_read;
+    close(fd);
 
 ERR_RETURN:
     return -1;
