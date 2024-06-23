@@ -23,8 +23,8 @@ typedef int32_t     b32;
    #define false 0
    #define true  1
 #endif
-	
-#if !defined(_WIN64) && !defined(_WIN32)
+
+#if defined(_WINDOWS_) || defined(_INC_WINDOWS)
 typedef char       byte;
 #endif
 
