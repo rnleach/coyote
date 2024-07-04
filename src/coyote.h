@@ -24,7 +24,7 @@ typedef int32_t     b32;
    #define true  1
 #endif
 
-#if defined(_WINDOWS_) || defined(_INC_WINDOWS)
+#if !defined(_WINDOWS_) && !defined(_INC_WINDOWS)
 typedef char       byte;
 #endif
 
