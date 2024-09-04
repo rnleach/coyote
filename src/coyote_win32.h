@@ -146,7 +146,7 @@ coy_file_writer_flush(CoyFileWriter *file)
         BOOL success = WriteFile(
             (HANDLE)file->handle,     // [in]                HANDLE       hFile,
             file->buffer,             // [in]                LPCVOID      lpBuffer,
-            file->buf_cursor,         // [in]                DWORD        nNumberOfBytesToWrite,
+            (DWORD)file->buf_cursor,  // [in]                DWORD        nNumberOfBytesToWrite,
             &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
             NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
         );
@@ -195,11 +195,12 @@ coy_file_write(CoyFileWriter *file, size nbytes_write, byte const *buffer)
     else
     {
         /* Large writes bypass the buffer and go straight to the file. */
+        Assert(INT32_MAX >= nbytes_write); /* Not prepared for REALLY large writes. */
         DWORD nbytes_written = 0;
         BOOL success = WriteFile(
             (HANDLE)file->handle,     // [in]                HANDLE       hFile,
             buffer,                   // [in]                LPCVOID      lpBuffer,
-            nbytes_write,             // [in]                DWORD        nNumberOfBytesToWrite,
+            (DWORD)nbytes_write,      // [in]                DWORD        nNumberOfBytesToWrite,
             &nbytes_written,          // [out, optional]     LPDWORD      lpNumberOfBytesWritten,
             NULL                      // [in, out, optional] LPOVERLAPPED lpOverlapped
         );
@@ -245,10 +246,11 @@ coy_file_fill_buffer(CoyFileReader *file)
 
     size space_available = COY_FILE_READER_BUF_SIZE - file->bytes_remaining;
 
+    Assert(INT32_MAX >= space_available); /* Not prepared for REALLY large reads. */
     DWORD nbytes_read = 0;
     BOOL success =  ReadFile((HANDLE) file->handle,                //  [in]                HANDLE       hFile,
                              file->buffer + file->bytes_remaining, //  [out]               LPVOID       lpBuffer,
-                             space_available,                      //  [in]                DWORD        nNumberOfBytesToRead,
+                             (DWORD)space_available,               //  [in]                DWORD        nNumberOfBytesToRead,
                              &nbytes_read,                         //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
                              NULL);                                //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
@@ -312,12 +314,13 @@ coy_file_slurp(char const *filename, size buf_size, byte *buffer)
     
     size space_available = buf_size;
 
+    Assert(INT32_MAX >= space_available); /* Not prepared for REALLY large reads. */
     DWORD nbytes_read = 0;
-    BOOL success =  ReadFile(fh,                    //  [in]                HANDLE       hFile,
-                             buffer,                //  [out]               LPVOID       lpBuffer,
-                             space_available,       //  [in]                DWORD        nNumberOfBytesToRead,
-                             &nbytes_read,          //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
-                             NULL);                 //  [in, out, optional] LPOVERLAPPED lpOverlapped
+    BOOL success =  ReadFile(fh,                     //  [in]                HANDLE       hFile,
+                             buffer,                 //  [out]               LPVOID       lpBuffer,
+                             (DWORD)space_available, //  [in]                DWORD        nNumberOfBytesToRead,
+                             &nbytes_read,           //  [out, optional]     LPDWORD      lpNumberOfBytesRead,
+                             NULL);                  //  [in, out, optional] LPOVERLAPPED lpOverlapped
 
     success &= CloseHandle(fh);
 
@@ -528,7 +531,7 @@ coy_memory_allocate(size minimum_num_bytes)
     uptr page_size = info.dwPageSize;
     uptr alloc_gran = info.dwAllocationGranularity;
 
-    uptr target_granularity = minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
+    uptr target_granularity = (uptr)minimum_num_bytes > alloc_gran ? alloc_gran : page_size;
 
     uptr allocation_size = minimum_num_bytes;
     if(minimum_num_bytes % target_granularity)

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#pragma warning(push)
+
 /*---------------------------------------------------------------------------------------------------------------------------
  * TODO: Things I'd like to add.
  *-------------------------------------------------------------------------------------------------------------------------*/
@@ -600,7 +602,7 @@ coy_file_read_str(CoyFileReader *file, size *len, char *str)
 
     if(str_len > 0)
     {
-        success = coy_file_read(file, str_len, (byte *)str);
+        success = coy_file_read(file, str_len, (byte *)str) > 0;
         StopIf(!success, return false);
     }
     else
@@ -919,6 +921,7 @@ coy_profile_begin(void)
     coy_global_profiler.blocks[0].hit_count++;
 }
 
+#pragma warning(disable : 4723)
 static inline void
 coy_profile_end(void)
 {
@@ -940,7 +943,7 @@ coy_profile_end(void)
     else
     {
         coy_global_profiler.total_elapsed = A_NAN;
-        coy_global_profiler.freq = A_NAN;
+        coy_global_profiler.freq = 0;
     }
 
     for(i32 i = 0; i < COY_ARRAY_SIZE(coy_global_profiler.blocks); ++i)
@@ -968,6 +971,7 @@ coy_profile_end(void)
         }
     }
 }
+#pragma warning(default : 4723)
 
 static inline CoyProfileAnchor 
 coy_profile_start_block(char const *label, i32 index, u64 bytes_processed)
@@ -1045,5 +1049,7 @@ coy_profile_end_block(CoyProfileAnchor *anchor)
 #include "coyote_linux_apple_common.h"
 
 #endif
+
+#pragma warning(pop)
 
 #endif
