@@ -5,7 +5,7 @@ SOURCEDIR="$PROJDIR/src"
 TESTDIR="$PROJDIR/tests"
 BUILD_SCRIPT_DIR="$PROJDIR/build"
 
-CFLAGS="-Wall -Werror -Wno-unknow-pragmas -D_DEFAULT_SOURCE -D_GNU_SOURCE -DCOY_PROFILE -std=c11 -I$SOURCEDIR -I$TESTDIR"
+CFLAGS="-Wall -Werror -Wno-unknown-pragmas -D_DEFAULT_SOURCE -D_GNU_SOURCE -DCOY_PROFILE -std=c11 -I$SOURCEDIR -I$TESTDIR"
 LDLIBS="-lm -lpthread"
 
 if [ "$#" -gt 0 -a "$1" = "debug" ]
