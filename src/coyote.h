@@ -229,7 +229,7 @@ typedef struct
 static inline CoyTerminalSize coy_get_terminal_size(void);
 
 /*---------------------------------------------------------------------------------------------------------------------------
- *                                        Multi-threading & Syncronization
+ *                                           Multi-threading & Syncronization
  *---------------------------------------------------------------------------------------------------------------------------
  * Basic threading and syncronization.
  */
