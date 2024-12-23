@@ -9,7 +9,6 @@
 /*---------------------------------------------------------------------------------------------------------------------------
  * TODO: Things I'd like to add.
  *-------------------------------------------------------------------------------------------------------------------------*/
-// TODO: Shared Libraries runtime loading.
 // TODO: Formatted output.
 
 /*---------------------------------------------------------------------------------------------------------------------------
@@ -216,6 +215,21 @@ static inline CoyFileNameIter coy_file_name_iterator_open(char const *directory_
 // Returns NULL when done. Copy the string if you need it, it will be overwritten on the next call. NOT THREADSAFE.
 static inline char const *coy_file_name_iterator_next(CoyFileNameIter *cfni);
 static inline void coy_file_name_iterator_close(CoyFileNameIter *cfin); // should leave the argument zeroed. NOT THREADSAFE.
+
+/*---------------------------------------------------------------------------------------------------------------------------
+ *                                         Dynamically Loading Shared Libraries
+ *---------------------------------------------------------------------------------------------------------------------------
+ *
+ * WARNING: NONE OF THESE ARE THREADSAFE.
+ */
+typedef struct
+{
+    void *handle;
+} CoySharedLibHandle;
+
+static inline CoySharedLibHandle coy_shared_lib_load(char const *lib_name);
+static inline void coy_shared_lib_unload(CoySharedLibHandle handle);
+static inline void *coy_share_lib_load_symbol(CoySharedLibHandle handle, char const *symbol_name);
 
 /*---------------------------------------------------------------------------------------------------------------------------
  *                                                     Terminal Info

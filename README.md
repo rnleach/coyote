@@ -25,6 +25,7 @@ Goals & Non-goals:
 
 ### Version 1.1.0 - IN PROGRESS
   - (XXXX-XX-XX)
+  - Load shared libraries. (*.dll, *.so)
   - Added profiler functionality.
   - Add function to get terminal size.
   - Succint typedefs for native types.

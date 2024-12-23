@@ -500,6 +500,29 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     return;
 }
 
+static inline CoySharedLibHandle 
+coy_shared_lib_load(char const *lib_name)
+{
+    void *h = LoadLibraryA(lib_name);
+    PanicIf(!h);
+    return (CoySharedLibHandle) { .handle = h };
+}
+
+static inline void 
+coy_shared_lib_unload(CoySharedLibHandle handle)
+{
+    b32 success = FreeLibrary(handle.handle);
+    PanicIf(!success);
+}
+
+static inline void *
+coy_share_lib_load_symbol(CoySharedLibHandle handle, char const *symbol_name)
+{
+    void *s = GetProcAddress(handle.handle, symbol_name);
+    PanicIf(!s);
+    return s;
+}
+
 static inline CoyTerminalSize 
 coy_get_terminal_size(void)
 {

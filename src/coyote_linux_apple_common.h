@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <x86intrin.h>
 #include <unistd.h>
+#include <dlfcn.h>
 
 static inline u64
 coy_time_now(void)
@@ -387,6 +388,28 @@ coy_file_name_iterator_close(CoyFileNameIter *cfin)
     /*int rc = */ closedir(d);
     *cfin = (CoyFileNameIter){0};
     return;
+}
+
+static inline CoySharedLibHandle 
+coy_shared_lib_load(char const *lib_name)
+{
+    void *h = dlopen(lib_name, RTLD_LAZY);
+    PanicIf(!h);
+    return (CoySharedLibHandle) { .handle = h };
+}
+
+static inline void 
+coy_shared_lib_unload(CoySharedLibHandle handle)
+{
+    dlclose(handle.handle);
+}
+
+static inline void *
+coy_share_lib_load_symbol(CoySharedLibHandle handle, char const *symbol_name)
+{
+    void *s = dlsym(handle.handle, symbol_name);
+    PanicIf(!s);
+    return s;
 }
 
 static inline CoyTerminalSize 
