@@ -59,7 +59,6 @@ static void
 test_single_producer_single_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
-    coy_channel_register_sender(&chan);
 
     ProducerThreadData pdata = { .outbound = &chan, .num_to_send = num_to_send };
     CoyThread producer_thread = {0};
@@ -73,7 +72,6 @@ test_single_producer_single_consumer(i32 num_to_send)
 
     success = coy_thread_join(&producer_thread);
     Assert(success);
-    coy_channel_done_sending(&chan);
 
     success = coy_thread_join(&consumer_thread);
     Assert(success);
@@ -87,7 +85,6 @@ static void
 test_single_producer_multiple_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
-    coy_channel_register_sender(&chan);
 
     ProducerThreadData pdata = { .outbound = &chan, .num_to_send = num_to_send };
     CoyThread producer_thread = {0};
@@ -105,7 +102,6 @@ test_single_producer_multiple_consumer(i32 num_to_send)
 
     success = coy_thread_join(&producer_thread);
     Assert(success);
-    coy_channel_done_sending(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
@@ -128,7 +124,6 @@ static void
 test_multiple_producer_single_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
-    coy_channel_register_sender(&chan);
 
     b32 success = true;
     ProducerThreadData pdata[4] = {0};
@@ -150,7 +145,6 @@ test_multiple_producer_single_consumer(i32 num_to_send)
         success = coy_thread_join(&producer_threads[i]);
         Assert(success);
     }
-    coy_channel_done_sending(&chan);
 
     success = coy_thread_join(&consumer_thread);
     Assert(success);
@@ -164,7 +158,6 @@ static void
 test_multiple_producer_multiple_consumer(i32 num_to_send)
 {
     CoyChannel chan = coy_channel_create();
-    coy_channel_register_sender(&chan);
 
     b32 success = true;
     ProducerThreadData pdata[4] = {0};
@@ -190,7 +183,6 @@ test_multiple_producer_multiple_consumer(i32 num_to_send)
         success = coy_thread_join(&producer_threads[i]);
         Assert(success);
     }
-    coy_channel_done_sending(&chan);
 
     for(i32 i = 0; i < 4; ++i)
     {
