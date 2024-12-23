@@ -14,10 +14,12 @@ rem
 IF "%1"=="debug" (GOTO Debug) ELSE (GOTO Release)
 
 :Debug
+@echo "Debug Build"
 SET flags=/Od /Zi /DCOY_PROFILE /WX /W3
 GOTO Operation
 
 :Release
+@echo "Release Build"
 SET flags=/O2 /favor:INTEL64 /arch:AVX2 /DNDEBUG /DCOY_PROFILE /WX /W3
 GOTO Operation
 
