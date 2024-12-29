@@ -442,7 +442,7 @@ coy_thread_create(CoyThread *thrd, CoyThreadFunc func, void *thread_data)
     _Static_assert(sizeof(pthread_t) <= sizeof(thrd->handle), "pthread_t doesn't fit in CoyThread");
     _Static_assert(_Alignof(pthread_t) <= 16, "pthread_t doesn't fit alignment in CoyThread");
 
-    return 0 == pthread_create((pthread_t *)&thrd->handle, NULL, coy_thread_func_internal, thrd);
+    return 0 == pthread_create((pthread_t *)thrd->handle, NULL, coy_thread_func_internal, thrd);
 }
 
 static inline b32
