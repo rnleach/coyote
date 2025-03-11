@@ -66,7 +66,7 @@ coy_path_info(char *path, b32 assume_file)
     while(idx >= 0)
     {
         /* Found the extension. */
-        if(*c == '.')
+        if(*c == '.' && !info.extension.start)
         {
             info.extension = (CoyPathStr){ .start = c + 1, .len = next_len };
         }
