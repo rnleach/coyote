@@ -33,6 +33,7 @@ Goals & Non-goals:
   - Added multiple producer multiple consumer threadsafe channel for pointers.
   - Bug fix for file iterator.
   - Add more convenience functions for file IO.
+  - Added some functions for working with file & directory paths.
   - Create a build program to combine the files into a single header instead of relying on includes.
 
 ### Version 1.0.0

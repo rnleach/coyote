@@ -50,6 +50,76 @@ ERR_RETURN:
 
 static char const coy_path_sep = '\\';
 
+static inline CoyPathInfo
+coy_path_info(char *path, b32 assume_file)
+{
+    CoyPathInfo info = {0};
+    info.full_path = path;
+
+    /* Get the length. */
+    size len = 0;
+    char *c = path;
+    while(*c && len < MAX_PATH)
+    {
+        ++len;
+        ++c;
+    }
+
+    /* Check for error condition. */
+    if(len == 0 || len >= MAX_PATH)
+    {
+        return info; /* Return empty info, there's nothing here. */
+    }
+
+    /* Find extension, and base.*/
+    size idx = len - 1;
+    c = &path[idx];
+    if(*c == coy_path_sep) /* Skip a trailing slash. */
+    {
+        --c;
+        --idx;
+    }
+    size next_len = 0;
+    while(idx >= 0)
+    {
+        /* Found the extension. */
+        if(*c == '.')
+        {
+            info.extension = (CoyPathStr){ .start = c + 1, .len = next_len };
+        }
+
+        /* Found file name, but check to make sure it's not just a trailing slash. */
+        if(*c == coy_path_sep && !info.base.start && (assume_file || info.extension.start) && (idx < len - 1))
+        {
+            info.base = (CoyPathStr){ .start = c + 1, .len = next_len };
+            info.is_file = true; /* Assume this is a file. */
+            next_len = -1;
+        }
+
+        /* Increment counters. */
+        ++next_len;
+        --idx;
+        --c;
+    }
+
+    info.dir.start = path;
+    info.dir.len = next_len;
+
+    /* Does it exist? */
+    DWORD attr = GetFileAttributes(path);
+    if(attr == INVALID_FILE_ATTRIBUTES)
+    {
+        info.exists = false;
+    }
+    else
+    {
+        info.exists = true;
+        info.is_file = FILE_ATTRIBUTE_DIRECTORY & attr ? false : true;
+    }
+
+    return info;
+}
+
 static inline b32 
 coy_path_append(size buf_len, char path_buffer[], char const *new_path)
 {

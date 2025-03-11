@@ -124,6 +124,27 @@ static inline void coy_memory_free(CoyMemoryBlock *mem);
  * Check the 'valid' member of the structs to check for errors!
  */
 
+typedef struct
+{
+    char *start; /* NULL indicates not a valid path element. */
+    size len;    /* 0 indicates not a valid path element.    */
+} CoyPathStr;
+
+typedef struct
+{
+    char *full_path;       /* Pointer to null terminated string. (Non-owning!!!)        */
+    CoyPathStr dir;        /* Directory, not including terminating directory separator. */
+    CoyPathStr base;       /* Last element in the path, if it is a file.                */
+    CoyPathStr extension;  /* File extension, if this path is a file.                   */
+    b32 exists;            /* Does this path already exist on the system?               */
+    b32 is_file;           /* Is this a file? If not, it's a directory.                 */
+} CoyPathInfo;
+
+/* If path exists and is a file, assumes file, if path exists and is a directory, assumes not file. If path does not exist,
+ * assumes file IFF it has an extension. You can override any assumptions via the assume_file argument. In the event that
+ * assume_file conflicts with the system information about an existing file, the system information is used.               */
+static inline CoyPathInfo coy_path_info(char *path, b32 assume_file);
+
 // Append new path to the path in path_buffer, return true on success or false on error. path_buffer must be zero terminated.
 static inline b32 coy_path_append(size buf_len, char path_buffer[], char const *new_path);
 
@@ -140,7 +161,7 @@ typedef struct
 } CoyFileReader;
 
 static inline CoyFileReader coy_file_open_read(char const *filename);
-static inline size coy_file_read(CoyFileReader *file, size buf_size, byte *buffer); // return nbytes read or -1 on error
+static inline size coy_file_read(CoyFileReader *file, size buf_size, byte *buffer); /* return nbytes read or -1 on error                           */
 static inline b32 coy_file_read_f64(CoyFileReader *file, f64 *val);
 static inline b32 coy_file_read_i8(CoyFileReader *file, i8 *val);
 static inline b32 coy_file_read_i16(CoyFileReader *file, i16 *val);
@@ -150,10 +171,10 @@ static inline b32 coy_file_read_u8(CoyFileReader *file, u8 *val);
 static inline b32 coy_file_read_u16(CoyFileReader *file, u16 *val);
 static inline b32 coy_file_read_u32(CoyFileReader *file, u32 *val);
 static inline b32 coy_file_read_u64(CoyFileReader *file, u64 *val);
-static inline b32 coy_file_read_str(CoyFileReader *file, size *len, char *str); /* set len to buffer length, updated to actual size on return. */
-static inline void coy_file_reader_close(CoyFileReader *file); /* Must set valid member to false on success or failure! */
+static inline b32 coy_file_read_str(CoyFileReader *file, size *len, char *str);     /* set len to buffer length, updated to actual size on return. */
+static inline void coy_file_reader_close(CoyFileReader *file);                      /* Must set valid member to false on success or failure!       */
 
-// return size in bytes of the loaded data or -1 on error. If buffer is too small, load nothing and return -1
+/* return size in bytes of the loaded data or -1 on error. If buffer is too small, load nothing and return -1 */
 static inline size coy_file_slurp(char const *filename, size buf_size, byte *buffer);
 
 
