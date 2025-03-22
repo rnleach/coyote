@@ -23,7 +23,10 @@ Goals & Non-goals:
 
 ## Releases
 
-### Version 1.1.0 - IN PROGRESS
+### Version 2.0.0 - In progress.
+  - (XXXX-XX-XX)
+
+### Version 1.1.0
   - (2025-03-22) 
   - Load shared libraries. (*.dll, *.so)
   - Added profiler functionality.
