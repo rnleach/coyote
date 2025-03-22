@@ -24,7 +24,7 @@ Goals & Non-goals:
 ## Releases
 
 ### Version 1.1.0 - IN PROGRESS
-  - (XXXX-XX-XX)
+  - (2025-03-22) 
   - Load shared libraries. (*.dll, *.so)
   - Added profiler functionality.
   - Add function to get terminal size.
